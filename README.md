@@ -4,7 +4,7 @@ Cross-platform desktop app for working with MeshCore companion radios on Linux, 
 
 ## Current Status
 
-`0.0.3-alpha`
+`0.0.4-alpha`
 
 The app is usable for early desktop testing and companion-radio workflows. USB is the most reliable transport today. Bluetooth support exists, but it is still host-stack dependent and remains experimental, especially on Linux.
 
@@ -13,6 +13,7 @@ The app is usable for early desktop testing and companion-radio workflows. USB i
 - Auto-detect and connect to MeshCore companion radios over USB serial
 - Bluetooth transport support in the desktop app
 - Direct messages and channel messages
+- MeshCore-style `@` mentions with clean UI rendering
 - Unread counts with per-node read tracking
 - Packet/message detail dialog with hop count and known route hop codes when available
 - Local 14-day message archive for desktop history
@@ -21,6 +22,7 @@ The app is usable for early desktop testing and companion-radio workflows. USB i
 - Companion radio settings editor
 - In-app update controls for packaged builds
 - Background-running mode with tray behavior and desktop notifications
+- Single-instance reopen behavior and clearer top-bar USB sync status
 
 ## Platform Targets
 
