@@ -10,7 +10,12 @@ import type {
   SendDirectMessageInput,
   SerialPortInfo
 } from '@shared/meshcore';
-import { MAX_MESHCORE_MESSAGE_CHARS, shortHex } from '@shared/meshcore';
+import {
+  buildNodeMentionAliases,
+  MAX_MESHCORE_MESSAGE_CHARS,
+  messageMentionsNode,
+  shortHex
+} from '@shared/meshcore';
 import { useIPC } from '@renderer/hooks/useIPC';
 import { bleMeshcoreClient } from '@renderer/lib/ble-meshcore-client';
 import { getContactArchiveNodeKey, loadArchivedContacts, saveArchivedContacts } from '@renderer/lib/contact-archive';
@@ -111,7 +116,8 @@ function describeMessageFeed(message: MeshcoreMessage): { title: string; detail:
 function notificationTitle(message: MeshcoreMessage): string {
   if (typeof message.channelIndex === 'number') {
     const channel = useChannelsStore.getState().channels.find((entry) => entry.index === message.channelIndex);
-    return channel?.name ? `#${channel.name}` : `#Channel ${message.channelIndex}`;
+    const channelTitle = channel?.name ? `#${channel.name}` : `#Channel ${message.channelIndex}`;
+    return message.mentioned ? `Mention in ${channelTitle}` : channelTitle;
   }
 
   return message.authorLabel || 'MeshCore message';
@@ -178,6 +184,27 @@ export function useMeshcoreEvents() {
     useConnectionStore.getState().setConnectionDetail(detail);
   }
 
+  function enrichMessageMentions(message: MeshcoreMessage): MeshcoreMessage {
+    if (message.direction !== 'incoming' || typeof message.channelIndex !== 'number') {
+      return message;
+    }
+
+    const connectionState = useConnectionStore.getState();
+    const mentionAliases = buildNodeMentionAliases(
+      connectionState.nodeName ?? connectionState.deviceSettings?.name ?? null,
+      connectionState.deviceSettings?.publicKey ?? null
+    );
+
+    if (!messageMentionsNode(message.body, mentionAliases)) {
+      return message;
+    }
+
+    return {
+      ...message,
+      mentioned: true
+    };
+  }
+
   function setActiveTransport(transport: ConnectionTransport | null): void {
     activeTransportRef.current = transport;
     useConnectionStore.getState().setTransport(transport);
@@ -198,19 +225,20 @@ export function useMeshcoreEvents() {
   function handlePushEvent(event: MeshcorePushEvent, source: ConnectionTransport): void {
     switch (event.type) {
       case 'message':
-        useMessagesStore.getState().appendMessage(event.message);
-        addFeedMessage(event.message, source);
+        const enrichedMessage = enrichMessageMentions(event.message);
+        useMessagesStore.getState().appendMessage(enrichedMessage);
+        addFeedMessage(enrichedMessage, source, enrichedMessage.mentioned ? 'success' : 'neutral');
         if (
-          event.message.direction === 'incoming' &&
+          enrichedMessage.direction === 'incoming' &&
           !document.hasFocus()
         ) {
           void window.meshcoreAPI.showDesktopNotification({
-            title: notificationTitle(event.message),
-            body: notificationBody(event.message)
+            title: notificationTitle(enrichedMessage),
+            body: notificationBody(enrichedMessage)
           });
         }
         if (archiveNodeKeyRef.current) {
-          void saveArchivedMessages(archiveNodeKeyRef.current, [event.message]);
+          void saveArchivedMessages(archiveNodeKeyRef.current, [enrichedMessage]);
         }
         return;
       case 'advert':
@@ -342,7 +370,7 @@ export function useMeshcoreEvents() {
     const deviceSettings = await client.getDeviceSettings();
     const archiveNodeKey = getMessageArchiveNodeKey(deviceSettings.publicKey);
     const contactArchiveNodeKey = getContactArchiveNodeKey(deviceSettings.publicKey);
-    const archivedMessages = await loadArchivedMessages(archiveNodeKey);
+    const archivedMessages = (await loadArchivedMessages(archiveNodeKey)).map(enrichMessageMentions);
     const archivedContacts = loadArchivedContacts(contactArchiveNodeKey);
     if (transport === 'usb') {
       setConnectionDetail('Syncing Repeaters');
@@ -352,7 +380,7 @@ export function useMeshcoreEvents() {
     if (transport === 'usb') {
       setConnectionDetail('Syncing Messages');
     }
-    const waitingMessages = await client.getWaitingMessages();
+    const waitingMessages = (await client.getWaitingMessages()).map(enrichMessageMentions);
     const batteryMillivolts = await client.getBattery();
     const hydratedMessages = [...archivedMessages, ...waitingMessages];
     const hydratedArchivedContacts = saveArchivedContacts(contactArchiveNodeKey, [...archivedContacts, ...contacts]);
@@ -403,7 +431,7 @@ export function useMeshcoreEvents() {
     messageSyncInFlightRef.current = true;
 
     try {
-      const waitingMessages = await window.meshcoreAPI.getWaitingMessages();
+      const waitingMessages = (await window.meshcoreAPI.getWaitingMessages()).map(enrichMessageMentions);
       const diagnostics = useRuntimeStore.getState().diagnostics;
       if (waitingMessages.length > 0) {
         useMessagesStore.getState().appendMessages(waitingMessages);

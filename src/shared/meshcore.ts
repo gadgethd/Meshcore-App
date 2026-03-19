@@ -53,6 +53,7 @@ export interface MeshcoreMessage {
   sentAt: string;
   direction: 'incoming' | 'outgoing' | 'system';
   authorLabel: string;
+  mentioned?: boolean;
   hopCount?: number;
   publicKey?: number[];
   channelIndex?: number;
@@ -196,6 +197,46 @@ export function toHex(bytes: number[]): string {
 
 export function shortHex(bytes: number[]): string {
   return toHex(bytes).slice(0, 8);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function normalizeMentionLabel(label: string): string {
+  return label.replace(/\s+/g, ' ').trim();
+}
+
+export function buildNodeMentionAliases(name: string | null | undefined, publicKey?: number[] | null): string[] {
+  const aliases = new Set<string>();
+  const normalizedName = normalizeMentionLabel(name ?? '');
+
+  if (normalizedName) {
+    aliases.add(normalizedName);
+  }
+
+  if (publicKey && publicKey.length > 0) {
+    const shortKey = shortHex(publicKey);
+    aliases.add(shortKey);
+    aliases.add(shortKey.slice(0, 6));
+  }
+
+  return [...aliases];
+}
+
+export function messageMentionsAlias(body: string, alias: string): boolean {
+  const normalizedAlias = normalizeMentionLabel(alias);
+  if (!normalizedAlias) {
+    return false;
+  }
+
+  const escapedAlias = escapeRegExp(normalizedAlias);
+  const pattern = new RegExp(`(^|\\s)@${escapedAlias}(?=$|[\\s,.:;!?])`, 'i');
+  return pattern.test(body);
+}
+
+export function messageMentionsNode(body: string, aliases: string[]): boolean {
+  return aliases.some((alias) => messageMentionsAlias(body, alias));
 }
 
 export function fromHex(hex: string): number[] {

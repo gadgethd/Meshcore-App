@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
-import { trimMeshcoreMessageToCharLimit } from '@shared/meshcore';
+import { normalizeMentionLabel, trimMeshcoreMessageToCharLimit } from '@shared/meshcore';
 
 interface MentionCandidate {
   key: string;
@@ -15,10 +15,6 @@ interface MessageComposerProps {
   mentionCandidates?: MentionCandidate[];
   suggestedMention?: MentionCandidate | null;
   onSend: (body: string) => Promise<void>;
-}
-
-function normalizeMentionLabel(label: string): string {
-  return label.replace(/\s+/g, ' ').trim();
 }
 
 function getMentionQuery(body: string): { start: number; query: string } | null {

@@ -119,6 +119,7 @@ export function MessageThread({ threadKey, title, subtitle, messages, activeCont
                 }
 
                 const isOutgoing = message.direction === 'outgoing';
+                const isMentioned = Boolean(message.mentioned);
 
                 return (
                   <article key={message.id} className={`flex flex-col ${isOutgoing ? 'items-end' : 'items-start'}`}>
@@ -133,6 +134,8 @@ export function MessageThread({ threadKey, title, subtitle, messages, activeCont
                       className={`max-w-[72%] cursor-pointer rounded-2xl px-3.5 py-2.5 transition hover:ring-1 hover:ring-cyan-300/30 ${
                         isOutgoing
                           ? 'rounded-br-[6px] bg-sky-500/18 ring-1 ring-sky-400/25'
+                          : isMentioned
+                            ? 'rounded-bl-[6px] bg-amber-400/10 ring-1 ring-amber-300/40'
                           : 'rounded-bl-[6px] bg-white/[0.07] ring-1 ring-white/[0.07]'
                       }`}
                       onClick={() => setSelectedMessage(message)}
@@ -147,6 +150,9 @@ export function MessageThread({ threadKey, title, subtitle, messages, activeCont
                       <div
                         className={`mt-1 flex items-center gap-1.5 ${isOutgoing ? 'justify-end' : 'justify-start'}`}
                       >
+                        {isMentioned ? (
+                          <span className="text-[10px] font-medium text-amber-300">Mention</span>
+                        ) : null}
                         {typeof message.hopCount === 'number' ? (
                           <span className="text-[10px] text-white/25">{message.hopCount} {message.hopCount === 1 ? 'hop' : 'hops'}</span>
                         ) : null}
@@ -200,6 +206,9 @@ export function MessageThread({ threadKey, title, subtitle, messages, activeCont
                 <div>
                   <p className="text-xs font-medium uppercase tracking-widest text-white/30">Direction</p>
                   <p className="mt-1 text-sm font-semibold text-white">{messageDirectionLabel(selectedMessage)}</p>
+                  {selectedMessage.mentioned ? (
+                    <p className="mt-1 text-xs font-medium text-amber-300">Mentioned you</p>
+                  ) : null}
                 </div>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-widest text-white/30">Hops</p>
