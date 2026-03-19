@@ -108,6 +108,33 @@ function describeMessageFeed(message: MeshcoreMessage): { title: string; detail:
   };
 }
 
+function notificationTitle(message: MeshcoreMessage): string {
+  if (typeof message.channelIndex === 'number') {
+    return `# Channel ${message.channelIndex}`;
+  }
+
+  return message.authorLabel || 'MeshCore message';
+}
+
+function notificationBody(message: MeshcoreMessage): string {
+  const body = message.body.trim();
+  return body.length > 160 ? `${body.slice(0, 157)}...` : body;
+}
+
+async function maybeRequestNotificationPermission(): Promise<void> {
+  if (typeof Notification === 'undefined') {
+    return;
+  }
+
+  if (Notification.permission !== 'default') {
+    return;
+  }
+
+  try {
+    await Notification.requestPermission();
+  } catch {}
+}
+
 export function useMeshcoreEvents() {
   const activeTransportRef = useRef<ConnectionTransport | null>(null);
   const autoConnectAttemptRef = useRef<{ signature: string; attemptedAt: number } | null>(null);
@@ -123,6 +150,7 @@ export function useMeshcoreEvents() {
 
   useEffect(() => {
     void refreshPorts();
+    void maybeRequestNotificationPermission();
 
     const unsubscribe = bleMeshcoreClient.onPush((event) => {
       handlePushEvent(event, 'bluetooth');
@@ -181,6 +209,22 @@ export function useMeshcoreEvents() {
       case 'message':
         useMessagesStore.getState().appendMessage(event.message);
         addFeedMessage(event.message, source);
+        if (
+          event.message.direction === 'incoming' &&
+          typeof Notification !== 'undefined' &&
+          Notification.permission === 'granted' &&
+          !document.hasFocus()
+        ) {
+          const notification = new Notification(notificationTitle(event.message), {
+            body: notificationBody(event.message),
+            tag: event.message.conversationKey
+          });
+
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+          };
+        }
         if (archiveNodeKeyRef.current) {
           void saveArchivedMessages(archiveNodeKeyRef.current, [event.message]);
         }
