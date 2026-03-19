@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
-import { normalizeMentionLabel, trimMeshcoreMessageToCharLimit } from '@shared/meshcore';
+import { formatMentionToken, trimMeshcoreMessageToCharLimit } from '@shared/meshcore';
 
 interface MentionCandidate {
   key: string;
@@ -61,7 +61,7 @@ export function MessageComposer({
       return;
     }
 
-    const mentionText = `@${normalizeMentionLabel(candidate.label)} `;
+    const mentionText = `${formatMentionToken(candidate.label)} `;
     const nextBody = `${body.slice(0, mentionQuery.start)}${mentionText}`;
     setBody(trimMeshcoreMessageToCharLimit(nextBody, maxChars));
     setActiveMentionIndex(0);
@@ -138,7 +138,7 @@ export function MessageComposer({
 
           if (insertedAtMention) {
             const nextBody = trimMeshcoreMessageToCharLimit(
-              `${rawValue}${normalizeMentionLabel(suggestedMention.label)} `,
+              `${rawValue}${formatMentionToken(suggestedMention.label)} `,
               maxChars
             );
             setBody(nextBody);
@@ -172,7 +172,7 @@ export function MessageComposer({
                   replaceMention(candidate);
                 }}
               >
-                <span className="truncate">@{candidate.label}</span>
+                <span className="truncate">{formatMentionToken(candidate.label)}</span>
                 {candidate.detail ? <span className="ml-3 shrink-0 text-[11px] text-white/35">{candidate.detail}</span> : null}
               </button>
             ))}
@@ -183,7 +183,7 @@ export function MessageComposer({
         <div className="flex min-w-0 flex-col">
           {suggestedMention ? (
             <span className="truncate text-[11px] text-white/25">
-              Type `@` to autofill @{suggestedMention.label}
+              Type `@` to autofill {formatMentionToken(suggestedMention.label)}
             </span>
           ) : null}
           <span

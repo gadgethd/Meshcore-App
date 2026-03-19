@@ -207,6 +207,10 @@ export function normalizeMentionLabel(label: string): string {
   return label.replace(/\s+/g, ' ').trim();
 }
 
+export function formatMentionToken(label: string): string {
+  return `@[${normalizeMentionLabel(label)}]`;
+}
+
 export function buildNodeMentionAliases(name: string | null | undefined, publicKey?: number[] | null): string[] {
   const aliases = new Set<string>();
   const normalizedName = normalizeMentionLabel(name ?? '');
@@ -231,7 +235,7 @@ export function messageMentionsAlias(body: string, alias: string): boolean {
   }
 
   const escapedAlias = escapeRegExp(normalizedAlias);
-  const pattern = new RegExp(`(^|\\s)@${escapedAlias}(?=$|[\\s,.:;!?])`, 'i');
+  const pattern = new RegExp(`(^|\\s)(?:@\\[${escapedAlias}\\]|@${escapedAlias})(?=$|[\\s,.:;!?])`, 'i');
   return pattern.test(body);
 }
 
