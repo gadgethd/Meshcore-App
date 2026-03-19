@@ -20,6 +20,14 @@ function messageDirectionLabel(message: MeshcoreMessage): string {
   return 'System';
 }
 
+function messageTargetLabel(message: MeshcoreMessage): string {
+  if (typeof message.channelIndex === 'number') {
+    return `#${message.channelIndex}`;
+  }
+
+  return 'Direct message';
+}
+
 export function MessageThread({ threadKey, title, subtitle, messages }: MessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousThreadKeyRef = useRef<string | null>(null);
@@ -186,29 +194,25 @@ export function MessageThread({ threadKey, title, subtitle, messages }: MessageT
                   <p className="mt-1 text-sm font-semibold text-white">{messageDirectionLabel(selectedMessage)}</p>
                 </div>
                 <div>
+                  <p className="text-xs font-medium uppercase tracking-widest text-white/30">Hops</p>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {typeof selectedMessage.hopCount === 'number'
+                      ? `${selectedMessage.hopCount} ${selectedMessage.hopCount === 1 ? 'hop' : 'hops'}`
+                      : '—'}
+                  </p>
+                </div>
+                <div>
                   <p className="text-xs font-medium uppercase tracking-widest text-white/30">Author</p>
                   <p className="mt-1 text-sm font-semibold text-white">{selectedMessage.authorLabel || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-widest text-white/30">Target</p>
+                  <p className="mt-1 text-sm font-semibold text-white">{messageTargetLabel(selectedMessage)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-widest text-white/30">Sent</p>
                   <p className="mt-1 text-sm font-semibold text-white">{format(new Date(selectedMessage.sentAt), 'yyyy-MM-dd HH:mm:ss')}</p>
                   <p className="mt-1 text-xs text-white/35">{selectedMessage.sentAt}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-widest text-white/30">Conversation</p>
-                  <p className="mt-1 break-all font-mono text-sm text-white/75">{selectedMessage.conversationKey}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-widest text-white/30">Hop count</p>
-                  <p className="mt-1 text-sm font-semibold text-white">
-                    {typeof selectedMessage.hopCount === 'number' ? selectedMessage.hopCount : '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-widest text-white/30">Channel</p>
-                  <p className="mt-1 text-sm font-semibold text-white">
-                    {typeof selectedMessage.channelIndex === 'number' ? `#${selectedMessage.channelIndex}` : 'Direct message'}
-                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-widest text-white/30">Public key</p>
