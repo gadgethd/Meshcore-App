@@ -274,6 +274,7 @@ export function MessagesView({
         publicKey: fromHex(activeKey.slice('dm:'.length)),
         displayName: `Node ${activeKey.slice('dm:'.length, 'dm:'.length + 8)}`,
         shortHex: activeKey.slice('dm:'.length, 'dm:'.length + 8),
+        routeHopCodes: [],
         advLat: 0,
         advLon: 0,
         lastSeenAt: new Date(0).toISOString()
@@ -385,7 +386,13 @@ export function MessagesView({
         }
       />
       <div className="flex min-h-0 flex-col">
-        <MessageThread threadKey={activeKey ?? 'none'} title={title} subtitle={subtitle} messages={activeMessages} />
+        <MessageThread
+          threadKey={activeKey ?? 'none'}
+          title={title}
+          subtitle={subtitle}
+          messages={activeMessages}
+          activeContact={activeContact}
+        />
         <MessageComposer
           disabled={!connected || !activeKey}
           label="Outbound payload"

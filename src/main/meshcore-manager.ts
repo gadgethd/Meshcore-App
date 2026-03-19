@@ -14,6 +14,7 @@ import type {
   UpdateMeshcoreDeviceSettingsInput
 } from '@shared/meshcore';
 import {
+  decodeRouteHopCodes,
   getChannelConversationKey,
   getDirectConversationKey,
   normalizeLastSeenAt,
@@ -23,6 +24,8 @@ import {
 interface MeshcoreLibraryContact {
   publicKey: Uint8Array;
   type: number;
+  outPathLen: number;
+  outPath: Uint8Array;
   advName: string;
   advLat: number;
   advLon: number;
@@ -301,6 +304,7 @@ function mapLibraryContact(contact: MeshcoreLibraryContact): MeshcoreContact {
     displayName: contact.advName || `Node ${shortHex(publicKey)}`,
     shortHex: shortHex(publicKey),
     type: contact.type,
+    routeHopCodes: decodeRouteHopCodes(contact.outPathLen, contact.outPath),
     advLat: contact.advLat,
     advLon: contact.advLon,
     lastSeenAt: normalizeLastSeenAt(toIsoDate(contact.lastAdvert || contact.lastMod))

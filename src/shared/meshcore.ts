@@ -31,6 +31,7 @@ export interface MeshcoreContact {
   shortHex: string;
   type?: number;
   nodeId?: string;
+  routeHopCodes?: string[];
   advLat: number;
   advLon: number;
   lastSeenAt: string;
@@ -232,6 +233,33 @@ export function normalizeLastSeenAt(value: string | number | Date): string {
 
   const now = new Date();
   return parsed > now ? now.toISOString() : parsed.toISOString();
+}
+
+export function decodeRouteHopCodes(pathLen: number | undefined, path: Uint8Array | number[] | undefined): string[] {
+  if (!Number.isFinite(pathLen) || pathLen === undefined || pathLen < 0 || pathLen === 0xff || !path) {
+    return [];
+  }
+
+  const hashSize = (pathLen >> 6) + 1;
+  const hashCount = pathLen & 63;
+  const bytes = path instanceof Uint8Array ? path : new Uint8Array(path);
+  const requiredLength = hashSize * hashCount;
+
+  if (hashCount <= 0 || bytes.length < requiredLength) {
+    return [];
+  }
+
+  const hops: string[] = [];
+  for (let index = 0; index < hashCount; index += 1) {
+    const start = index * hashSize;
+    const end = start + hashSize;
+    const fullHex = Array.from(bytes.slice(start, end))
+      .map((value) => value.toString(16).padStart(2, '0'))
+      .join('');
+    hops.push(fullHex.slice(0, 2));
+  }
+
+  return hops;
 }
 
 function scaleCoordinate(rawValue: number, maxDegrees: number): number {

@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { toHex } from '@shared/meshcore';
-import type { MeshcoreMessage } from '@shared/meshcore';
+import type { MeshcoreContact, MeshcoreMessage } from '@shared/meshcore';
 
 interface MessageThreadProps {
   threadKey: string;
   title: string;
   subtitle: string;
   messages: MeshcoreMessage[];
+  activeContact?: MeshcoreContact;
 }
 
 function shouldShowAuthor(message: MeshcoreMessage): boolean {
@@ -28,7 +29,7 @@ function messageTargetLabel(message: MeshcoreMessage): string {
   return 'Direct message';
 }
 
-export function MessageThread({ threadKey, title, subtitle, messages }: MessageThreadProps) {
+export function MessageThread({ threadKey, title, subtitle, messages, activeContact }: MessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousThreadKeyRef = useRef<string | null>(null);
   const shouldAnimateNextMessageRef = useRef(false);
@@ -75,6 +76,13 @@ export function MessageThread({ threadKey, title, subtitle, messages }: MessageT
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [selectedMessage]);
+
+  const selectedRouteHopCodes =
+    selectedMessage && selectedMessage.publicKey && activeContact && toHex(activeContact.publicKey) === toHex(selectedMessage.publicKey)
+      ? activeContact.routeHopCodes ?? []
+      : selectedMessage && selectedMessage.direction !== 'outgoing' && activeContact && activeContact.routeHopCodes?.length
+        ? activeContact.routeHopCodes
+        : [];
 
   return (
     <>
@@ -200,6 +208,11 @@ export function MessageThread({ threadKey, title, subtitle, messages }: MessageT
                       ? `${selectedMessage.hopCount} ${selectedMessage.hopCount === 1 ? 'hop' : 'hops'}`
                       : '—'}
                   </p>
+                  {selectedRouteHopCodes.length > 0 ? (
+                    <p className="mt-1 font-mono text-xs text-white/45">
+                      {selectedRouteHopCodes.join(' -> ')}
+                    </p>
+                  ) : null}
                 </div>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-widest text-white/30">Author</p>
