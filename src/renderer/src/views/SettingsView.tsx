@@ -87,6 +87,43 @@ function formatBytes(value: number | null): string {
   return `${value} B`;
 }
 
+function sanitizeReleaseNotesHtml(html: string): string {
+  if (typeof window === 'undefined' || !html.trim()) {
+    return '';
+  }
+
+  const parser = new DOMParser();
+  const document = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+
+  for (const element of document.querySelectorAll('script, style, iframe, object, embed, link, meta')) {
+    element.remove();
+  }
+
+  for (const element of document.body.querySelectorAll('*')) {
+    for (const attribute of [...element.attributes]) {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim();
+
+      if (name.startsWith('on') || name === 'style') {
+        element.removeAttribute(attribute.name);
+        continue;
+      }
+
+      if ((name === 'href' || name === 'src') && value && !/^https?:|^mailto:/i.test(value)) {
+        element.removeAttribute(attribute.name);
+        continue;
+      }
+
+      if (name === 'target') {
+        element.setAttribute('target', '_blank');
+        element.setAttribute('rel', 'noreferrer');
+      }
+    }
+  }
+
+  return document.body.innerHTML;
+}
+
 export function SettingsView({
   nodeName,
   status,
@@ -118,6 +155,7 @@ export function SettingsView({
   const [appUpdate, setAppUpdate] = useState<AppUpdateState | null>(null);
   const [updateAction, setUpdateAction] = useState<'idle' | 'checking' | 'downloading' | 'installing'>('idle');
   const diagnostics = useRuntimeStore((state) => state.diagnostics);
+  const releaseNotesHtml = appUpdate?.releaseNotes ? sanitizeReleaseNotesHtml(appUpdate.releaseNotes) : '';
   const [rebootConfirm, setRebootConfirm] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [advertStatus, setAdvertStatus] = useState<{ type: 'flood' | 'zero-hop' | null; sending: boolean }>({ type: null, sending: false });
@@ -306,7 +344,10 @@ export function SettingsView({
                 {appUpdate?.releaseNotes ? (
                   <details className="rounded-2xl border border-white/10 bg-black/10 px-3 py-2 text-sm text-slate-300">
                     <summary className="cursor-pointer font-medium text-white">Release notes</summary>
-                    <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-slate-300">{appUpdate.releaseNotes}</pre>
+                    <div
+                      className="mt-2 space-y-2 text-sm text-slate-300 [&_a]:text-cyan-300 [&_a]:underline [&_code]:rounded [&_code]:bg-white/10 [&_code]:px-1 [&_code]:py-0.5 [&_li]:ml-5 [&_li]:list-disc [&_p]:mb-2 [&_strong]:text-white [&_tt]:rounded [&_tt]:bg-white/10 [&_tt]:px-1 [&_tt]:py-0.5"
+                      dangerouslySetInnerHTML={{ __html: releaseNotesHtml }}
+                    />
                   </details>
                 ) : null}
               </div>

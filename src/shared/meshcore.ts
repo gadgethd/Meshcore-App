@@ -146,6 +146,7 @@ export interface MeshcoreAPI {
   checkForAppUpdates: () => Promise<AppUpdateState>;
   downloadAppUpdate: () => Promise<AppUpdateState>;
   installAppUpdate: () => Promise<void>;
+  quitApp: () => Promise<void>;
   showDesktopNotification: (input: DesktopNotificationInput) => Promise<void>;
   getContacts: () => Promise<MeshcoreContact[]>;
   getChannels: () => Promise<MeshcoreChannel[]>;
@@ -173,6 +174,7 @@ export const IPC_CHANNELS = {
   checkForAppUpdates: 'appUpdate:check',
   downloadAppUpdate: 'appUpdate:download',
   installAppUpdate: 'appUpdate:install',
+  quitApp: 'app:quit',
   showDesktopNotification: 'desktopNotification:show',
   getContacts: 'meshcore:getContacts',
   getChannels: 'meshcore:getChannels',

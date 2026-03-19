@@ -5,6 +5,11 @@
 ### Notes
 - `dev` now tracks the next prerelease cycle after `0.0.2-alpha`.
 
+### Changed
+- Added a real `Quit` action to the left navigation so the app can fully exit instead of only hiding to the tray.
+- Release notes in Settings now render formatted GitHub HTML instead of showing raw markup.
+- Linux launcher metadata now sets `StartupWMClass` / `X-GNOME-WMClass` and a matching desktop name to improve dock association with the running window.
+
 ## 0.0.2-alpha
 
 ### Added

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Activity, Hash, Map, MessageSquare, Settings2 } from 'lucide-react';
+import { Activity, Hash, Map, MessageSquare, Power, Settings2 } from 'lucide-react';
 import { APP_VERSION } from '@shared/app-meta';
 import { useMeshcoreEvents } from '@renderer/hooks/useMeshcoreEvents';
 import { useChannelsStore } from '@renderer/store/channels.store';
@@ -117,6 +117,16 @@ export default function App() {
               );
             })}
           </nav>
+          <div className="mt-auto pt-3">
+            <button
+              type="button"
+              onClick={() => void window.meshcoreAPI.quitApp()}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-all hover:bg-rose-400/10 hover:text-rose-300"
+            >
+              <Power size={15} className="shrink-0" />
+              <span className="flex-1 text-left">Quit</span>
+            </button>
+          </div>
         </aside>
 
         {/* ── Content ───────────────────────────────────── */}

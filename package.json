@@ -3,6 +3,7 @@
   "version": "0.0.3-alpha",
   "private": true,
   "type": "module",
+  "desktopName": "meshcore-desktop.desktop",
   "description": "Cross-platform desktop app for MeshCore radios.",
   "main": "out/main/index.js",
   "scripts": {
@@ -55,7 +56,11 @@
       "target": [
         "AppImage"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "desktop": {
+        "StartupWMClass": "meshcore-desktop",
+        "X-GNOME-WMClass": "meshcore-desktop"
+      }
     },
     "mac": {
       "target": [
