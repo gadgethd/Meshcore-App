@@ -107,6 +107,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          repo="${GITHUB_REPOSITORY}"
           tag="${GITHUB_REF_NAME}"
           version="${tag#v}"
           prerelease_flag=""
@@ -115,8 +116,8 @@ jobs:
             prerelease_flag="--prerelease"
           fi
 
-          if gh release view "${tag}" >/dev/null 2>&1; then
-            gh release upload "${tag}" final-assets/* --clobber
+          if gh release view "${tag}" --repo "${repo}" >/dev/null 2>&1; then
+            gh release upload "${tag}" final-assets/* --clobber --repo "${repo}"
           else
-            gh release create "${tag}" final-assets/* --title "MeshCore Desktop ${version}" --generate-notes ${prerelease_flag}
+            gh release create "${tag}" final-assets/* --repo "${repo}" --title "MeshCore Desktop ${version}" --generate-notes ${prerelease_flag}
           fi
