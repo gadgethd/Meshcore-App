@@ -169,8 +169,13 @@ export function useMeshcoreEvents() {
     });
 
     useConnectionStore.getState().setNodeName(null);
+    useConnectionStore.getState().setConnectionDetail(null);
     useConnectionStore.getState().setDeviceSettings(null);
     useConnectionStore.getState().setBattery(null);
+  }
+
+  function setConnectionDetail(detail: string | null): void {
+    useConnectionStore.getState().setConnectionDetail(detail);
   }
 
   function setActiveTransport(transport: ConnectionTransport | null): void {
@@ -247,6 +252,9 @@ export function useMeshcoreEvents() {
         useConnectionStore.getState().setStatus(event.status);
         if (event.error) {
           useConnectionStore.getState().setError(event.error);
+          setConnectionDetail(event.error);
+        } else if (event.status === 'disconnected') {
+          setConnectionDetail(null);
         }
         const diagnostics = useRuntimeStore.getState().diagnostics;
         if (diagnostics.lastConnectionStatus !== event.status || event.error) {
@@ -326,14 +334,24 @@ export function useMeshcoreEvents() {
       }
     }
 
+    if (transport === 'usb') {
+      setConnectionDetail(`Node found at ${useConnectionStore.getState().portPath ?? 'USB radio'}`);
+    }
+
     const selfInfo = await client.getSelfInfo();
     const deviceSettings = await client.getDeviceSettings();
     const archiveNodeKey = getMessageArchiveNodeKey(deviceSettings.publicKey);
     const contactArchiveNodeKey = getContactArchiveNodeKey(deviceSettings.publicKey);
     const archivedMessages = await loadArchivedMessages(archiveNodeKey);
     const archivedContacts = loadArchivedContacts(contactArchiveNodeKey);
+    if (transport === 'usb') {
+      setConnectionDetail('Syncing Repeaters');
+    }
     const contacts = await client.getContacts();
     const channels = await client.getChannels();
+    if (transport === 'usb') {
+      setConnectionDetail('Syncing Messages');
+    }
     const waitingMessages = await client.getWaitingMessages();
     const batteryMillivolts = await client.getBattery();
     const hydratedMessages = [...archivedMessages, ...waitingMessages];
@@ -369,6 +387,7 @@ export function useMeshcoreEvents() {
 
     setActiveTransport(transport);
     useConnectionStore.getState().setNodeName(selfInfo.name);
+    setConnectionDetail(null);
     useConnectionStore.getState().setDeviceSettings(deviceSettings);
     useConnectionStore.getState().setBattery(batteryMillivolts);
     useConnectionStore.getState().setError(null);
@@ -464,6 +483,7 @@ export function useMeshcoreEvents() {
   async function autoConnect(ports: SerialPortInfo[]): Promise<void> {
     let lastError: string | null = null;
     const candidates = useSettingsStore.getState().probeAllSerialPorts ? ports : ports.slice(0, 1);
+    setConnectionDetail('Finding Node');
 
     for (const port of candidates) {
       try {
@@ -489,6 +509,7 @@ export function useMeshcoreEvents() {
       useConnectionStore.getState().setTransport(null);
       useConnectionStore.getState().setStatus('error');
       useConnectionStore.getState().setError(lastError);
+      setConnectionDetail(lastError);
     }
   }
 
@@ -510,6 +531,7 @@ export function useMeshcoreEvents() {
     useConnectionStore.getState().setError(null);
     useConnectionStore.getState().setTransport('usb');
     useConnectionStore.getState().setPortPath(trimmedPortPath);
+    setConnectionDetail(`Node found at ${trimmedPortPath}`);
     useRuntimeStore.getState().recordConnection({ status: 'connecting', transport: 'usb' });
 
     try {
@@ -526,9 +548,11 @@ export function useMeshcoreEvents() {
         useConnectionStore.getState().setStatus('error');
         const formattedError = formatSerialConnectionError(error, trimmedPortPath);
         useConnectionStore.getState().setError(formattedError);
+        setConnectionDetail(formattedError);
         useRuntimeStore.getState().recordConnection({ status: 'error', transport: null, error: formattedError });
       } else {
         useConnectionStore.getState().setStatus('disconnected');
+        setConnectionDetail(null);
       }
       throw error;
     } finally {
@@ -546,6 +570,7 @@ export function useMeshcoreEvents() {
     useConnectionStore.getState().setError(null);
     useConnectionStore.getState().setTransport('bluetooth');
     useConnectionStore.getState().setPortPath(null);
+    setConnectionDetail('Scanning Bluetooth Nodes');
     useRuntimeStore.getState().recordConnection({ status: 'connecting', transport: 'bluetooth' });
 
     try {
@@ -561,6 +586,7 @@ export function useMeshcoreEvents() {
       useConnectionStore.getState().setStatus('error');
       const formattedError = formatBluetoothConnectionError(error);
       useConnectionStore.getState().setError(formattedError);
+      setConnectionDetail(formattedError);
       useRuntimeStore.getState().recordConnection({ status: 'error', transport: null, error: formattedError });
       throw error;
     } finally {
@@ -578,6 +604,7 @@ export function useMeshcoreEvents() {
     clearNodeData();
     setActiveTransport(null);
     useConnectionStore.getState().setStatus('disconnected');
+    setConnectionDetail(null);
     autoConnectAttemptRef.current = null;
     useRuntimeStore.getState().recordConnection({ status: 'disconnected', transport: null });
   }

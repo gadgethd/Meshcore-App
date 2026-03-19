@@ -28,7 +28,7 @@ export default function App() {
   const { sendDirectMessage, sendChannelMessage, updateDeviceSettings, createHashtagChannel, connectBluetooth, getDeviceInfo, reboot, sendAdvert } =
     useMeshcoreEvents();
 
-  const { status, nodeName, transport, portPath, deviceSettings, batteryMillivolts, error } = useConnectionStore();
+  const { status, nodeName, connectionDetail, transport, portPath, deviceSettings, batteryMillivolts, error } = useConnectionStore();
   const preferredTransport = useSettingsStore((state) => state.preferredTransport);
   const contacts = Object.values(useContactsStore((state) => state.contacts));
   const archivedMapContacts = Object.values(useMapArchiveStore((state) => state.archivedContacts));
@@ -49,6 +49,18 @@ export default function App() {
     if (key === 'channels') return channelUnread;
     return 0;
   }
+
+  const topBarLabel =
+    status === 'connected'
+      ? nodeName ?? 'Connected'
+      : connectionDetail ?? (status === 'error' ? error ?? 'Connection error' : 'No device');
+
+  const topBarMeta =
+    status === 'connected'
+      ? portPath
+      : status === 'syncing' || status === 'connecting'
+        ? portPath
+        : null;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -79,7 +91,10 @@ export default function App() {
                   : 'bg-white/20'
             }`}
           />
-          <span className="font-medium text-white/75">{nodeName ?? 'No device'}</span>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate font-medium text-white/75">{topBarLabel}</span>
+            {topBarMeta ? <span className="truncate text-[11px] text-white/35">{topBarMeta}</span> : null}
+          </div>
           {batteryMillivolts ? (
             <span className="text-white/35">{(batteryMillivolts / 1000).toFixed(2)} V</span>
           ) : null}

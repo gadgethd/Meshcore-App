@@ -10,6 +10,7 @@
 - Release notes in Settings now render formatted GitHub HTML instead of showing raw markup.
 - Linux launcher metadata now sets `StartupWMClass` / `X-GNOME-WMClass` and a matching desktop name to improve dock association with the running window.
 - Linux second-instance startup no longer continues into full app initialization after missing the single-instance lock, which reduces transient duplicate windows on relaunch.
+- The top bar now shows clearer connection progress for USB workflows, including node discovery and sync stages.
 
 ## 0.0.2-alpha
 
