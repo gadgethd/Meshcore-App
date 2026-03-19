@@ -110,7 +110,8 @@ function describeMessageFeed(message: MeshcoreMessage): { title: string; detail:
 
 function notificationTitle(message: MeshcoreMessage): string {
   if (typeof message.channelIndex === 'number') {
-    return `# Channel ${message.channelIndex}`;
+    const channel = useChannelsStore.getState().channels.find((entry) => entry.index === message.channelIndex);
+    return channel?.name ? `#${channel.name}` : `#Channel ${message.channelIndex}`;
   }
 
   return message.authorLabel || 'MeshCore message';
