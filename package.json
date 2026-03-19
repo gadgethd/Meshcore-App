@@ -1,6 +1,6 @@
 {
   "name": "meshcore-desktop",
-  "version": "0.0.1",
+  "version": "0.0.1-alpha",
   "private": true,
   "type": "module",
   "description": "Cross-platform desktop app for MeshCore radios.",

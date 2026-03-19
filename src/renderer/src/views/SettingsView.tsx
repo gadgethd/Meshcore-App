@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ConnectionTransport, MeshcoreDeviceInfo, MeshcoreDeviceSettings, UpdateMeshcoreDeviceSettingsInput } from '@shared/meshcore';
-import { APP_VERSION, RELEASE_CHANNEL } from '@shared/app-meta';
+import { APP_VERSION } from '@shared/app-meta';
 import { toHex } from '@shared/meshcore';
 import { useSettingsStore } from '@renderer/store/settings.store';
 
@@ -464,7 +464,7 @@ export function SettingsView({
           <div className="border-t border-white/10 pt-4">
             <p className="text-slate-400">Version</p>
             <p className="mt-1 font-semibold text-white">
-              {RELEASE_CHANNEL} {APP_VERSION}
+              {APP_VERSION}
             </p>
           </div>
         </div>

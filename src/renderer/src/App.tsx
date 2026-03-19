@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Hash, Map, MessageSquare, Settings2 } from 'lucide-react';
-import { APP_VERSION, RELEASE_CHANNEL } from '@shared/app-meta';
+import { APP_VERSION } from '@shared/app-meta';
 import { useMeshcoreEvents } from '@renderer/hooks/useMeshcoreEvents';
 import { useChannelsStore } from '@renderer/store/channels.store';
 import { useConnectionStore } from '@renderer/store/connection.store';
@@ -60,7 +60,7 @@ export default function App() {
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <span className="text-sm font-semibold tracking-tight text-white/90">MeshCore</span>
-          <span className="mesh-pill">{RELEASE_CHANNEL} {APP_VERSION}</span>
+          <span className="mesh-pill">{APP_VERSION}</span>
           <span className="mesh-pill">{preferredTransport === 'usb' ? 'USB' : 'BLE'}</span>
         </div>
 

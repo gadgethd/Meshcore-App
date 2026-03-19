@@ -1,0 +1,118 @@
+name: Build Releases
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+            artifact_suffix: linux
+            builder_args: --linux AppImage
+            artifact_glob: "*.AppImage"
+          - os: macos-latest
+            label: macOS
+            artifact_suffix: macos
+            builder_args: --mac dmg
+            artifact_glob: "*.dmg"
+          - os: windows-latest
+            label: Windows
+            artifact_suffix: windows
+            builder_args: --win nsis
+            artifact_glob: "*.exe"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Read app version
+        id: version
+        shell: bash
+        run: echo "value=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        shell: bash
+        run: npm ci
+
+      - name: Build installer
+        shell: bash
+        run: npm run package -- ${{ matrix.builder_args }}
+
+      - name: Collect packaged files
+        shell: bash
+        run: |
+          shopt -s nullglob
+          mkdir -p release-artifacts
+          files=(release/${{ matrix.artifact_glob }})
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No packaged files matched release/${{ matrix.artifact_glob }}"
+            exit 1
+          fi
+
+          cp "${files[@]}" release-artifacts/
+          ls -la release-artifacts
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeshCore-Desktop-${{ steps.version.outputs.value }}-${{ matrix.artifact_suffix }}
+          path: release-artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-artifacts
+
+      - name: Collect release assets
+        shell: bash
+        run: |
+          mkdir -p final-assets
+          find downloaded-artifacts -type f \( -name '*.AppImage' -o -name '*.dmg' -o -name '*.exe' \) -exec cp {} final-assets/ \;
+          ls -la final-assets
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          prerelease_flag=""
+
+          if [[ "${version}" == *-* ]]; then
+            prerelease_flag="--prerelease"
+          fi
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release upload "${tag}" final-assets/* --clobber
+          else
+            gh release create "${tag}" final-assets/* --title "MeshCore Desktop ${version}" --generate-notes ${prerelease_flag}
+          fi
