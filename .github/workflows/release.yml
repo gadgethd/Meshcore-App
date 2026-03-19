@@ -56,7 +56,9 @@ jobs:
 
       - name: Build installer
         shell: bash
-        run: npm run package -- ${{ matrix.builder_args }}
+        run: |
+          npm run build
+          npx electron-builder --publish never ${{ matrix.builder_args }}
 
       - name: Collect packaged files
         shell: bash
