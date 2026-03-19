@@ -94,6 +94,7 @@ function createWindow(): BrowserWindow {
     minWidth: 1180,
     minHeight: 760,
     backgroundColor: '#0f172a',
+    icon: getTrayIcon(),
     titleBarStyle: 'hiddenInset',
     autoHideMenuBar: true,
     webPreferences: {
@@ -183,6 +184,16 @@ function createWindow(): BrowserWindow {
   });
 
   return window;
+}
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    showMainWindow();
+  });
 }
 
 app.whenReady().then(() => {
