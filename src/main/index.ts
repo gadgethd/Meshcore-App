@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, dialog, shell } from 'electron';
+import { app, BrowserWindow, Menu, Tray, dialog, nativeImage, shell } from 'electron';
 
 // Required on Linux for Web Bluetooth GATT operations to work via BlueZ
 app.commandLine.appendSwitch('enable-features', 'WebBluetooth');
@@ -10,6 +10,9 @@ import { IPC_CHANNELS } from '@shared/meshcore';
 
 const meshcoreManager = new MeshcoreManager();
 const appUpdateManager = new AppUpdateManager();
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
 let pendingBluetoothSelection:
   | {
       callback: (deviceId: string) => void;
@@ -25,6 +28,63 @@ function clearPendingBluetoothSelection(selectedDeviceId = ''): void {
   clearTimeout(pendingBluetoothSelection.timeout);
   pendingBluetoothSelection.callback(selectedDeviceId);
   pendingBluetoothSelection = null;
+}
+
+function getTrayIcon(): Electron.NativeImage {
+  const iconPath = app.isPackaged
+    ? join(process.resourcesPath, 'icon.png')
+    : join(process.cwd(), 'icon.png');
+
+  const image = nativeImage.createFromPath(iconPath);
+  return image.isEmpty() ? nativeImage.createEmpty() : image;
+}
+
+function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    mainWindow = createWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function ensureTray(): void {
+  if (tray) {
+    return;
+  }
+
+  tray = new Tray(getTrayIcon());
+  tray.setToolTip('MeshCore Desktop');
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: 'Open MeshCore Desktop',
+        click: () => {
+          showMainWindow();
+        }
+      },
+      {
+        type: 'separator'
+      },
+      {
+        label: 'Quit',
+        click: () => {
+          isQuitting = true;
+          clearPendingBluetoothSelection('');
+          app.quit();
+        }
+      }
+    ])
+  );
+
+  tray.on('click', () => {
+    showMainWindow();
+  });
 }
 
 function createWindow(): BrowserWindow {
@@ -107,12 +167,28 @@ function createWindow(): BrowserWindow {
     void window.loadFile(join(__dirname, '../renderer/index.html'));
   }
 
+  window.on('close', (event) => {
+    if (isQuitting) {
+      return;
+    }
+
+    event.preventDefault();
+    window.hide();
+  });
+
+  window.on('closed', () => {
+    if (mainWindow === window) {
+      mainWindow = null;
+    }
+  });
+
   return window;
 }
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   registerIpcHandlers(meshcoreManager, appUpdateManager);
+  ensureTray();
 
   meshcoreManager.onPush((event) => {
     for (const window of BrowserWindow.getAllWindows()) {
@@ -130,18 +206,20 @@ app.whenReady().then(() => {
     }
   });
 
-  createWindow();
+  mainWindow = createWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    showMainWindow();
   });
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
 });
 
 app.on('window-all-closed', () => {
   clearPendingBluetoothSelection('');
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && isQuitting) {
     app.quit();
   }
 });
