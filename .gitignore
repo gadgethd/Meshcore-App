@@ -1,0 +1,17 @@
+node_modules/
+out/
+release/
+dist/
+
+.DS_Store
+*.log
+
+.claude/
+CLAUDE.md
+AI.md
+**/AI.md
+
+.env
+.env.*
+*.local
+*.local.*

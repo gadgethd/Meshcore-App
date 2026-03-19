@@ -1,0 +1,245 @@
+export type ConnectionStatus =
+  | 'disconnected'
+  | 'connecting'
+  | 'syncing'
+  | 'connected'
+  | 'error';
+
+export type ConnectionTransport = 'usb' | 'bluetooth';
+
+export const MAX_MESHCORE_MESSAGE_CHARS = 133;
+
+export interface SerialPortInfo {
+  path: string;
+  manufacturer?: string;
+  serialNumber?: string;
+  friendlyName: string;
+}
+
+export interface MeshcoreContact {
+  publicKey: number[];
+  displayName: string;
+  shortHex: string;
+  type?: number;
+  nodeId?: string;
+  advLat: number;
+  advLon: number;
+  lastSeenAt: string;
+}
+
+export interface MeshcoreChannel {
+  index: number;
+  name: string;
+  unreadCount: number;
+  memberCount: number;
+}
+
+export type ConversationKey = `dm:${string}` | `channel:${number}`;
+
+export interface MeshcoreMessage {
+  id: string;
+  conversationKey: ConversationKey;
+  body: string;
+  sentAt: string;
+  direction: 'incoming' | 'outgoing' | 'system';
+  authorLabel: string;
+  hopCount?: number;
+  publicKey?: number[];
+  channelIndex?: number;
+  expectedAckCrc?: number;
+  acknowledged?: boolean;
+}
+
+export interface SendDirectMessageInput {
+  publicKey: number[];
+  body: string;
+}
+
+export interface SendChannelMessageInput {
+  channelIndex: number;
+  body: string;
+}
+
+export interface CreateHashtagChannelInput {
+  hashtag: string;
+}
+
+export interface MeshcoreDeviceSettings {
+  type: number;
+  txPower: number;
+  maxTxPower: number;
+  publicKey: number[];
+  advLat: number;
+  advLon: number;
+  manualAddContacts: boolean;
+  radioFreq: number;
+  radioBw: number;
+  radioSf: number;
+  radioCr: number;
+  name: string;
+}
+
+export interface UpdateMeshcoreDeviceSettingsInput {
+  txPower: number;
+  advLat: number;
+  advLon: number;
+  manualAddContacts: boolean;
+  radioFreq: number;
+  radioBw: number;
+  radioSf: number;
+  radioCr: number;
+  name: string;
+}
+
+export type MeshcorePushEvent =
+  | { type: 'message'; message: MeshcoreMessage }
+  | { type: 'advert'; contact: MeshcoreContact }
+  | { type: 'battery'; batteryMillivolts: number | null }
+  | { type: 'connection'; status: ConnectionStatus; error?: string }
+  | { type: 'send-confirmed'; ackCrc: number };
+
+export interface MeshcoreDeviceInfo {
+  firmwareVersion: string;
+  firmwareBuildDate: string;
+  manufacturerModel: string;
+}
+
+export interface MeshcoreAPI {
+  listPorts: () => Promise<SerialPortInfo[]>;
+  connect: (portPath: string) => Promise<void>;
+  disconnect: () => Promise<void>;
+  syncTime: () => Promise<void>;
+  getSelfInfo: () => Promise<{ name: string }>;
+  getDeviceSettings: () => Promise<MeshcoreDeviceSettings>;
+  getDeviceInfo: () => Promise<MeshcoreDeviceInfo>;
+  getContacts: () => Promise<MeshcoreContact[]>;
+  getChannels: () => Promise<MeshcoreChannel[]>;
+  getWaitingMessages: () => Promise<MeshcoreMessage[]>;
+  getBattery: () => Promise<number | null>;
+  updateDeviceSettings: (input: UpdateMeshcoreDeviceSettingsInput) => Promise<MeshcoreDeviceSettings>;
+  createHashtagChannel: (input: CreateHashtagChannelInput) => Promise<MeshcoreChannel>;
+  sendDirectMessage: (input: SendDirectMessageInput) => Promise<MeshcoreMessage>;
+  sendChannelMessage: (input: SendChannelMessageInput) => Promise<MeshcoreMessage>;
+  reboot: () => Promise<void>;
+  sendAdvert: (type: 'flood' | 'zero-hop') => Promise<void>;
+  onPush: (listener: (event: MeshcorePushEvent) => void) => () => void;
+}
+
+export const IPC_CHANNELS = {
+  listPorts: 'meshcore:listPorts',
+  connect: 'meshcore:connect',
+  disconnect: 'meshcore:disconnect',
+  syncTime: 'meshcore:syncTime',
+  getSelfInfo: 'meshcore:getSelfInfo',
+  getDeviceSettings: 'meshcore:getDeviceSettings',
+  getDeviceInfo: 'meshcore:getDeviceInfo',
+  getContacts: 'meshcore:getContacts',
+  getChannels: 'meshcore:getChannels',
+  getWaitingMessages: 'meshcore:getWaitingMessages',
+  getBattery: 'meshcore:getBattery',
+  updateDeviceSettings: 'meshcore:updateDeviceSettings',
+  createHashtagChannel: 'meshcore:createHashtagChannel',
+  sendDirectMessage: 'meshcore:sendDirectMessage',
+  sendChannelMessage: 'meshcore:sendChannelMessage',
+  reboot: 'meshcore:reboot',
+  sendAdvert: 'meshcore:sendAdvert',
+  push: 'meshcore:push'
+} as const;
+
+export function toHex(bytes: number[]): string {
+  return bytes.map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+export function shortHex(bytes: number[]): string {
+  return toHex(bytes).slice(0, 8);
+}
+
+export function fromHex(hex: string): number[] {
+  const normalized = hex.trim().toLowerCase();
+  if (normalized.length % 2 !== 0) {
+    return [];
+  }
+
+  const bytes: number[] = [];
+  for (let index = 0; index < normalized.length; index += 2) {
+    const value = Number.parseInt(normalized.slice(index, index + 2), 16);
+    if (Number.isNaN(value)) {
+      return [];
+    }
+
+    bytes.push(value);
+  }
+
+  return bytes;
+}
+
+export function getDirectConversationKey(publicKey: number[]): ConversationKey {
+  return `dm:${toHex(publicKey)}`;
+}
+
+export function getChannelConversationKey(channelIndex: number): ConversationKey {
+  return `channel:${channelIndex}`;
+}
+
+export function hasGpsFix(contact: MeshcoreContact): boolean {
+  return contact.advLat !== 0 || contact.advLon !== 0;
+}
+
+export function isDirectMessageContact(contact: MeshcoreContact): boolean {
+  return contact.type === 1 || contact.type === undefined;
+}
+
+function scaleCoordinate(rawValue: number, maxDegrees: number): number {
+  if (!Number.isFinite(rawValue)) {
+    return Number.NaN;
+  }
+
+  const scaledE7 = rawValue / 1e7;
+  const scaledE6 = rawValue / 1e6;
+  const e7Valid = Math.abs(scaledE7) <= maxDegrees;
+  const e6Valid = Math.abs(scaledE6) <= maxDegrees;
+
+  if (e6Valid && !e7Valid) {
+    return scaledE6;
+  }
+
+  if (e7Valid && !e6Valid) {
+    return scaledE7;
+  }
+
+  if (e6Valid && e7Valid) {
+    // Some radios appear to advertise microdegrees instead of 1e7-scaled values.
+    // When both are technically valid, prefer the higher-magnitude position rather
+    // than biasing the map toward the Gulf of Guinea.
+    return Math.abs(scaledE6) >= Math.abs(scaledE7) ? scaledE6 : scaledE7;
+  }
+
+  return scaledE7;
+}
+
+export function contactLatitude(contact: MeshcoreContact): number {
+  return scaleCoordinate(contact.advLat, 90);
+}
+
+export function contactLongitude(contact: MeshcoreContact): number {
+  return scaleCoordinate(contact.advLon, 180);
+}
+
+export function contactCoordinates(contact: MeshcoreContact): [number, number] | null {
+  const latitude = contactLatitude(contact);
+  const longitude = contactLongitude(contact);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+    return null;
+  }
+
+  return [latitude, longitude];
+}
+
+export function trimMeshcoreMessageToCharLimit(body: string, maxChars: number): string {
+  return [...body].slice(0, maxChars).join('');
+}
