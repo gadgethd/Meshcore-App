@@ -128,28 +128,7 @@ export function MessageComposer({
         disabled={disabled}
         rows={3}
         onChange={(e) => {
-          const rawValue = e.target.value;
-          const previousLength = body.length;
-          const nextLength = rawValue.length;
-          const insertedAtMention =
-            nextLength === previousLength + 1 &&
-            rawValue.endsWith('@') &&
-            suggestedMention;
-
-          if (insertedAtMention) {
-            const nextBody = trimMeshcoreMessageToCharLimit(
-              `${rawValue}${formatMentionToken(suggestedMention.label)} `,
-              maxChars
-            );
-            setBody(nextBody);
-            setActiveMentionIndex(0);
-            queueMicrotask(() => {
-              textareaRef.current?.setSelectionRange(nextBody.length, nextBody.length);
-            });
-            return;
-          }
-
-          setBody(trimMeshcoreMessageToCharLimit(rawValue, maxChars));
+          setBody(trimMeshcoreMessageToCharLimit(e.target.value, maxChars));
           setActiveMentionIndex(0);
         }}
         onKeyDown={handleKeyDown}
@@ -183,7 +162,7 @@ export function MessageComposer({
         <div className="flex min-w-0 flex-col">
           {suggestedMention ? (
             <span className="truncate text-[11px] text-white/25">
-              Type `@` to autofill {formatMentionToken(suggestedMention.label)}
+              Type `@` to mention. Recent: {formatMentionToken(suggestedMention.label)}
             </span>
           ) : null}
           <span
