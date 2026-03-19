@@ -3,7 +3,7 @@
   "version": "0.0.3-alpha",
   "private": true,
   "type": "module",
-  "desktopName": "meshcore-desktop.desktop",
+  "desktopName": "meshcore-desktop-dev.desktop",
   "description": "Cross-platform desktop app for MeshCore radios.",
   "main": "out/main/index.js",
   "scripts": {
