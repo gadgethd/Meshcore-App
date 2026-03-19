@@ -13,6 +13,7 @@ const api: MeshcoreAPI = {
   checkForAppUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.checkForAppUpdates),
   downloadAppUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.downloadAppUpdate),
   installAppUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.installAppUpdate),
+  showDesktopNotification: (input) => ipcRenderer.invoke(IPC_CHANNELS.showDesktopNotification, input),
   getContacts: () => ipcRenderer.invoke(IPC_CHANNELS.getContacts),
   getChannels: () => ipcRenderer.invoke(IPC_CHANNELS.getChannels),
   getWaitingMessages: () => ipcRenderer.invoke(IPC_CHANNELS.getWaitingMessages),

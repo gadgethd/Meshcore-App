@@ -199,6 +199,9 @@ if (!hasSingleInstanceLock) {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   registerIpcHandlers(meshcoreManager, appUpdateManager);
+  appUpdateManager.setNotificationClickHandler(() => {
+    showMainWindow();
+  });
   ensureTray();
 
   meshcoreManager.onPush((event) => {

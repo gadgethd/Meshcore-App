@@ -1,11 +1,11 @@
-import { app } from 'electron';
+import { Notification, app } from 'electron';
 import electronUpdater, {
   type AppUpdater,
   type ProgressInfo,
   type UpdateDownloadedEvent,
   type UpdateInfo
 } from 'electron-updater';
-import type { AppUpdateState } from '@shared/meshcore';
+import type { AppUpdateState, DesktopNotificationInput } from '@shared/meshcore';
 
 function normalizeReleaseNotes(value: UpdateInfo['releaseNotes'] | UpdateDownloadedEvent['releaseNotes']): string | null {
   if (!value) {
@@ -64,6 +64,7 @@ export class AppUpdateManager {
   private readonly autoUpdater: AppUpdater;
   private state: AppUpdateState = createInitialState();
   private readonly listeners = new Set<(state: AppUpdateState) => void>();
+  private notificationHandler: (() => void) | null = null;
 
   constructor() {
     const { autoUpdater } = electronUpdater;
@@ -164,6 +165,10 @@ export class AppUpdateManager {
     };
   }
 
+  setNotificationClickHandler(handler: () => void): void {
+    this.notificationHandler = handler;
+  }
+
   async checkForUpdates(): Promise<AppUpdateState> {
     if (!app.isPackaged) {
       this.setState({
@@ -213,6 +218,23 @@ export class AppUpdateManager {
     }
 
     this.autoUpdater.quitAndInstall();
+  }
+
+  showDesktopNotification(input: DesktopNotificationInput): void {
+    if (!Notification.isSupported()) {
+      return;
+    }
+
+    const notification = new Notification({
+      title: input.title,
+      body: input.body
+    });
+
+    notification.on('click', () => {
+      this.notificationHandler?.();
+    });
+
+    notification.show();
   }
 
   private applyProgress(progress: ProgressInfo): void {

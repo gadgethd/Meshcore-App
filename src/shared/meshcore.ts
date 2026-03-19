@@ -129,6 +129,11 @@ export interface AppUpdateState {
   message: string | null;
 }
 
+export interface DesktopNotificationInput {
+  title: string;
+  body: string;
+}
+
 export interface MeshcoreAPI {
   listPorts: () => Promise<SerialPortInfo[]>;
   connect: (portPath: string) => Promise<void>;
@@ -141,6 +146,7 @@ export interface MeshcoreAPI {
   checkForAppUpdates: () => Promise<AppUpdateState>;
   downloadAppUpdate: () => Promise<AppUpdateState>;
   installAppUpdate: () => Promise<void>;
+  showDesktopNotification: (input: DesktopNotificationInput) => Promise<void>;
   getContacts: () => Promise<MeshcoreContact[]>;
   getChannels: () => Promise<MeshcoreChannel[]>;
   getWaitingMessages: () => Promise<MeshcoreMessage[]>;
@@ -167,6 +173,7 @@ export const IPC_CHANNELS = {
   checkForAppUpdates: 'appUpdate:check',
   downloadAppUpdate: 'appUpdate:download',
   installAppUpdate: 'appUpdate:install',
+  showDesktopNotification: 'desktopNotification:show',
   getContacts: 'meshcore:getContacts',
   getChannels: 'meshcore:getChannels',
   getWaitingMessages: 'meshcore:getWaitingMessages',

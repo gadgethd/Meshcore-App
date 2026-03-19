@@ -18,6 +18,7 @@ export function registerIpcHandlers(meshcoreManager: MeshcoreManager, appUpdateM
   ipcMain.handle(IPC_CHANNELS.checkForAppUpdates, () => appUpdateManager.checkForUpdates());
   ipcMain.handle(IPC_CHANNELS.downloadAppUpdate, () => appUpdateManager.downloadUpdate());
   ipcMain.handle(IPC_CHANNELS.installAppUpdate, () => appUpdateManager.installUpdate());
+  ipcMain.handle(IPC_CHANNELS.showDesktopNotification, (_event, input) => appUpdateManager.showDesktopNotification(input));
   ipcMain.handle(IPC_CHANNELS.getContacts, () => meshcoreManager.getContacts());
   ipcMain.handle(IPC_CHANNELS.getChannels, () => meshcoreManager.getChannels());
   ipcMain.handle(IPC_CHANNELS.getWaitingMessages, () => meshcoreManager.getWaitingMessages());
