@@ -1,5 +1,10 @@
 # Changelog
 
+## dev (0.0.3-alpha)
+
+### Notes
+- `dev` now tracks the next prerelease cycle after `0.0.2-alpha`.
+
 ## 0.0.2-alpha
 
 ### Added
