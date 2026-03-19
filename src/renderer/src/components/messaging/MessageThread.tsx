@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
-import { toHex } from '@shared/meshcore';
+import { prettifyMentionText, toHex } from '@shared/meshcore';
 import type { MeshcoreContact, MeshcoreMessage } from '@shared/meshcore';
 
 interface MessageThreadProps {
@@ -112,7 +112,7 @@ export function MessageThread({ threadKey, title, subtitle, messages, activeCont
                       onClick={() => setSelectedMessage(message)}
                     >
                       <div className="h-px flex-1 bg-white/[0.06]" />
-                      <p className="shrink-0 text-[11px] text-white/25">{message.body}</p>
+                      <p className="shrink-0 text-[11px] text-white/25">{prettifyMentionText(message.body)}</p>
                       <div className="h-px flex-1 bg-white/[0.06]" />
                     </button>
                   );
@@ -146,7 +146,7 @@ export function MessageThread({ threadKey, title, subtitle, messages, activeCont
                         }
                       }}
                     >
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-100">{message.body}</p>
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-100">{prettifyMentionText(message.body)}</p>
                       <div
                         className={`mt-1 flex items-center gap-1.5 ${isOutgoing ? 'justify-end' : 'justify-start'}`}
                       >
@@ -199,7 +199,7 @@ export function MessageThread({ threadKey, title, subtitle, messages, activeCont
               <div>
                 <p className="text-xs font-medium uppercase tracking-widest text-white/30">Body</p>
                 <p className="mt-2 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/10 px-3 py-3 text-sm leading-relaxed text-slate-100">
-                  {selectedMessage.body}
+                  {prettifyMentionText(selectedMessage.body)}
                 </p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">

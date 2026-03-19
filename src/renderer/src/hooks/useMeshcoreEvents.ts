@@ -14,6 +14,7 @@ import {
   buildNodeMentionAliases,
   MAX_MESHCORE_MESSAGE_CHARS,
   messageMentionsNode,
+  prettifyMentionText,
   shortHex
 } from '@shared/meshcore';
 import { useIPC } from '@renderer/hooks/useIPC';
@@ -105,7 +106,8 @@ function describeMessageFeed(message: MeshcoreMessage): { title: string; detail:
     typeof message.hopCount === 'number'
       ? ` • ${message.hopCount} ${message.hopCount === 1 ? 'hop' : 'hops'}`
       : '';
-  const bodySummary = message.body.length > 120 ? `${message.body.slice(0, 117)}...` : message.body;
+  const prettyBody = prettifyMentionText(message.body);
+  const bodySummary = prettyBody.length > 120 ? `${prettyBody.slice(0, 117)}...` : prettyBody;
 
   return {
     title: `${target} packet`,
@@ -124,7 +126,7 @@ function notificationTitle(message: MeshcoreMessage): string {
 }
 
 function notificationBody(message: MeshcoreMessage): string {
-  const body = message.body.trim();
+  const body = prettifyMentionText(message.body).trim();
   return body.length > 160 ? `${body.slice(0, 157)}...` : body;
 }
 

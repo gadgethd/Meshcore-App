@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
-import { formatMentionToken, trimMeshcoreMessageToCharLimit } from '@shared/meshcore';
+import { formatMentionDisplay, formatMentionToken, trimMeshcoreMessageToCharLimit } from '@shared/meshcore';
 
 interface MentionCandidate {
   key: string;
@@ -151,7 +151,7 @@ export function MessageComposer({
                   replaceMention(candidate);
                 }}
               >
-                <span className="truncate">{formatMentionToken(candidate.label)}</span>
+                <span className="truncate">{formatMentionDisplay(candidate.label)}</span>
                 {candidate.detail ? <span className="ml-3 shrink-0 text-[11px] text-white/35">{candidate.detail}</span> : null}
               </button>
             ))}
@@ -162,7 +162,7 @@ export function MessageComposer({
         <div className="flex min-w-0 flex-col">
           {suggestedMention ? (
             <span className="truncate text-[11px] text-white/25">
-              Type `@` to mention. Recent: {formatMentionToken(suggestedMention.label)}
+              Type `@` to mention. Recent: {formatMentionDisplay(suggestedMention.label)}
             </span>
           ) : null}
           <span

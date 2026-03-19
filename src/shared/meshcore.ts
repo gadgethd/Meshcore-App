@@ -223,6 +223,14 @@ export function formatMentionToken(label: string): string {
   return `@[${sanitizeMentionLabel(label)}]`;
 }
 
+export function formatMentionDisplay(label: string): string {
+  return `@${sanitizeMentionLabel(label)}`;
+}
+
+export function prettifyMentionText(text: string): string {
+  return text.replace(/@\[([^\]]+)\]/g, (_, label: string) => formatMentionDisplay(label));
+}
+
 export function isChannelFallbackAuthorLabel(label: string): boolean {
   return /^Channel \d+$/i.test(normalizeMentionLabel(label));
 }
