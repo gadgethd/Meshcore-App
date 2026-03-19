@@ -1,14 +1,15 @@
 # Changelog
 
-## dev (0.0.3-alpha)
+## dev (0.0.4-alpha)
 
 ### Notes
-- `dev` now tracks the next prerelease cycle after `0.0.2-alpha`.
+- `dev` now tracks the next prerelease cycle after `0.0.3-alpha`.
 
 ### Changed
 - Added a real `Quit` action to the left navigation so the app can fully exit instead of only hiding to the tray.
 - Release notes in Settings now render formatted GitHub HTML instead of showing raw markup.
 - Linux launcher metadata now sets `StartupWMClass` / `X-GNOME-WMClass` and a matching desktop name to improve dock association with the running window.
+- Linux second-instance startup no longer continues into full app initialization after missing the single-instance lock, which reduces transient duplicate windows on relaunch.
 
 ## 0.0.2-alpha
 

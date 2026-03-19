@@ -189,51 +189,51 @@ function createWindow(): BrowserWindow {
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) {
-  app.quit();
+  app.exit(0);
 } else {
   app.on('second-instance', () => {
     showMainWindow();
   });
+
+  app.whenReady().then(() => {
+    Menu.setApplicationMenu(null);
+    registerIpcHandlers(meshcoreManager, appUpdateManager);
+    appUpdateManager.setNotificationClickHandler(() => {
+      showMainWindow();
+    });
+    ensureTray();
+
+    meshcoreManager.onPush((event) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) {
+          window.webContents.send(IPC_CHANNELS.push, event);
+        }
+      }
+    });
+
+    appUpdateManager.onStateChange((state) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) {
+          window.webContents.send(IPC_CHANNELS.appUpdate, state);
+        }
+      }
+    });
+
+    mainWindow = createWindow();
+
+    app.on('activate', () => {
+      showMainWindow();
+    });
+  });
+
+  app.on('before-quit', () => {
+    isQuitting = true;
+  });
+
+  app.on('window-all-closed', () => {
+    clearPendingBluetoothSelection('');
+    if (process.platform !== 'darwin' && isQuitting) {
+      app.quit();
+    }
+  });
 }
-
-app.whenReady().then(() => {
-  Menu.setApplicationMenu(null);
-  registerIpcHandlers(meshcoreManager, appUpdateManager);
-  appUpdateManager.setNotificationClickHandler(() => {
-    showMainWindow();
-  });
-  ensureTray();
-
-  meshcoreManager.onPush((event) => {
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed()) {
-        window.webContents.send(IPC_CHANNELS.push, event);
-      }
-    }
-  });
-
-  appUpdateManager.onStateChange((state) => {
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed()) {
-        window.webContents.send(IPC_CHANNELS.appUpdate, state);
-      }
-    }
-  });
-
-  mainWindow = createWindow();
-
-  app.on('activate', () => {
-    showMainWindow();
-  });
-});
-
-app.on('before-quit', () => {
-  isQuitting = true;
-});
-
-app.on('window-all-closed', () => {
-  clearPendingBluetoothSelection('');
-  if (process.platform !== 'darwin' && isQuitting) {
-    app.quit();
-  }
-});
