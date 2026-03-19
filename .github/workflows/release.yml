@@ -46,7 +46,9 @@ jobs:
       - name: Read app version
         id: version
         shell: bash
-        run: echo "value=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(node --input-type=module -e "import { readFileSync } from 'node:fs'; const pkg = JSON.parse(readFileSync('./package.json', 'utf8')); console.log(pkg.version);")
+          echo "value=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         shell: bash
