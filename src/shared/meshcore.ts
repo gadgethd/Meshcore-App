@@ -189,6 +189,17 @@ export function isDirectMessageContact(contact: MeshcoreContact): boolean {
   return contact.type === 1 || contact.type === undefined;
 }
 
+export function normalizeLastSeenAt(value: string | number | Date): string {
+  const parsed = value instanceof Date ? value : new Date(value);
+
+  if (!Number.isFinite(parsed.getTime())) {
+    return new Date().toISOString();
+  }
+
+  const now = new Date();
+  return parsed > now ? now.toISOString() : parsed.toISOString();
+}
+
 function scaleCoordinate(rawValue: number, maxDegrees: number): number {
   if (!Number.isFinite(rawValue)) {
     return Number.NaN;

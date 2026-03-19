@@ -38,7 +38,7 @@ export function MessageComposer({ disabled, maxChars, onSend }: MessageComposerP
   return (
     <div className="mt-3 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm">
       <textarea
-        className="w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-sm leading-relaxed text-slate-100 outline-none placeholder:text-white/25"
+        className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-sm leading-relaxed text-slate-100 outline-none placeholder:text-white/25"
         placeholder="Transmit into the mesh… (Enter to send, Shift+Enter for newline)"
         value={body}
         disabled={disabled}
@@ -46,7 +46,7 @@ export function MessageComposer({ disabled, maxChars, onSend }: MessageComposerP
         onChange={(e) => setBody(trimMeshcoreMessageToCharLimit(e.target.value, maxChars))}
         onKeyDown={handleKeyDown}
       />
-      <div className="flex items-center justify-between px-4 pb-3 pt-1">
+      <div className="flex shrink-0 items-end justify-between px-4 pb-4 pt-2">
         <span
           className={`text-[11px] transition-colors ${
             remaining < 20 ? 'text-amber-400/70' : 'text-white/20'
@@ -58,9 +58,9 @@ export function MessageComposer({ disabled, maxChars, onSend }: MessageComposerP
           type="button"
           disabled={!canSend}
           onClick={() => void doSend()}
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500 text-white shadow-[0_2px_10px_rgba(14,165,233,0.5)] transition-all hover:bg-sky-400 disabled:bg-white/10 disabled:shadow-none disabled:opacity-30"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-white shadow-[0_2px_10px_rgba(14,165,233,0.5)] transition-all hover:bg-sky-400 disabled:bg-white/10 disabled:shadow-none disabled:opacity-30"
         >
-          <ArrowUp size={14} />
+          <ArrowUp size={15} />
         </button>
       </div>
     </div>

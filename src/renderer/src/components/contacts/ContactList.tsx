@@ -8,9 +8,11 @@ interface ContactListEntry {
 
 interface ContactListProps {
   contacts: Array<ContactListEntry | MeshcoreContact>;
+  selectedContactHex?: string | null;
+  onSelectContact?: (contact: MeshcoreContact) => void;
 }
 
-export function ContactList({ contacts }: ContactListProps) {
+export function ContactList({ contacts, selectedContactHex = null, onSelectContact }: ContactListProps) {
   const normalizedContacts: ContactListEntry[] = contacts.map((entry) =>
     'contact' in entry ? entry : { contact: entry, stale: false }
   );
@@ -20,11 +22,17 @@ export function ContactList({ contacts }: ContactListProps) {
       <h2 className="mb-4 text-sm font-semibold text-white/70">Known Nodes</h2>
       <div className="space-y-2">
         {normalizedContacts.map(({ contact, stale }) => (
-          <article
+          <button
+            type="button"
             key={contact.shortHex}
-            className={`rounded-xl border px-3.5 py-3 ${
-              stale ? 'border-white/[0.05] bg-white/[0.02]' : 'border-white/[0.08] bg-white/[0.04]'
+            className={`block w-full rounded-xl border px-3.5 py-3 text-left transition ${
+              selectedContactHex === contact.shortHex
+                ? 'border-cyan-300/45 bg-cyan-300/10'
+                : stale
+                  ? 'border-white/[0.05] bg-white/[0.02] hover:border-white/[0.08] hover:bg-white/[0.03]'
+                  : 'border-white/[0.08] bg-white/[0.04] hover:border-white/[0.12] hover:bg-white/[0.05]'
             }`}
+            onClick={() => onSelectContact?.(contact)}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -42,7 +50,7 @@ export function ContactList({ contacts }: ContactListProps) {
                 </p>
               </div>
             </div>
-          </article>
+          </button>
         ))}
         {normalizedContacts.length === 0 ? (
           <p className="py-4 text-center text-sm text-white/25">No nodes discovered yet.</p>

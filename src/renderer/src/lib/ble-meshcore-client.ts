@@ -12,6 +12,7 @@ import type {
 import {
   getChannelConversationKey,
   getDirectConversationKey,
+  normalizeLastSeenAt,
   shortHex
 } from '@shared/meshcore';
 
@@ -128,7 +129,7 @@ function mapContact(contact: BleLibraryContact): MeshcoreContact {
     type: contact.type,
     advLat: contact.advLat,
     advLon: contact.advLon,
-    lastSeenAt: toIsoDate(contact.lastAdvert || contact.lastMod)
+    lastSeenAt: normalizeLastSeenAt(toIsoDate(contact.lastAdvert || contact.lastMod))
   };
 }
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import type { ConnectionTransport, MeshcoreDeviceInfo, MeshcoreDeviceSettings, UpdateMeshcoreDeviceSettingsInput } from '@shared/meshcore';
 import { APP_VERSION } from '@shared/app-meta';
 import { toHex } from '@shared/meshcore';
+import { useRuntimeStore } from '@renderer/store/runtime.store';
 import { useSettingsStore } from '@renderer/store/settings.store';
 
 interface SettingsViewProps {
@@ -55,6 +57,14 @@ function formatBattery(batteryMillivolts: number | null): string {
   return `${(batteryMillivolts / 1000).toFixed(2)} V`;
 }
 
+function formatRelative(value: string | null): string {
+  if (!value) {
+    return '—';
+  }
+
+  return formatDistanceToNow(new Date(value), { addSuffix: true });
+}
+
 export function SettingsView({
   nodeName,
   status,
@@ -83,6 +93,7 @@ export function SettingsView({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [connectingBluetooth, setConnectingBluetooth] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<MeshcoreDeviceInfo | null>(null);
+  const diagnostics = useRuntimeStore((state) => state.diagnostics);
   const [rebootConfirm, setRebootConfirm] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [advertStatus, setAdvertStatus] = useState<{ type: 'flood' | 'zero-hop' | null; sending: boolean }>({ type: null, sending: false });
@@ -418,6 +429,41 @@ export function SettingsView({
           <div>
             <p className="text-slate-400">Battery</p>
             <p className="mt-1 font-semibold text-white">{formatBattery(batteryMillivolts)}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Last sync</p>
+            <p className="mt-1 font-semibold text-white">{formatRelative(diagnostics.lastSyncAt)}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Sync source</p>
+            <p className="mt-1 font-semibold capitalize text-white">{diagnostics.lastSyncSource ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Last queue pull</p>
+            <p className="mt-1 font-semibold text-white">{diagnostics.lastSyncedMessageCount}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Archived messages available</p>
+            <p className="mt-1 font-semibold text-white">{diagnostics.archivedMessagesAvailable}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Detected serial ports</p>
+            <p className="mt-1 font-semibold text-white">{diagnostics.detectedPortCount}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Last port refresh</p>
+            <p className="mt-1 font-semibold text-white">{formatRelative(diagnostics.lastPortRefreshAt)}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Last probe</p>
+            <p className="mt-1 font-semibold text-white">
+              {diagnostics.lastProbePortPath
+                ? `${diagnostics.lastProbeOutcome ?? 'unknown'} on ${diagnostics.lastProbePortPath}`
+                : '—'}
+            </p>
+            {diagnostics.lastProbeError ? (
+              <p className="mt-1 text-xs text-amber-200">{diagnostics.lastProbeError}</p>
+            ) : null}
           </div>
           {deviceSettings ? (
             <>

@@ -4,12 +4,13 @@ import type {
   MeshcoreChannel,
   MeshcoreDeviceSettings,
   MeshcoreAPI,
+  MeshcoreMessage,
   MeshcorePushEvent,
   SendChannelMessageInput,
   SendDirectMessageInput,
   SerialPortInfo
 } from '@shared/meshcore';
-import { MAX_MESHCORE_MESSAGE_CHARS } from '@shared/meshcore';
+import { MAX_MESHCORE_MESSAGE_CHARS, shortHex } from '@shared/meshcore';
 import { useIPC } from '@renderer/hooks/useIPC';
 import { bleMeshcoreClient } from '@renderer/lib/ble-meshcore-client';
 import { getContactArchiveNodeKey, loadArchivedContacts, saveArchivedContacts } from '@renderer/lib/contact-archive';
@@ -19,6 +20,7 @@ import { useConnectionStore } from '@renderer/store/connection.store';
 import { useContactsStore } from '@renderer/store/contacts.store';
 import { useMapArchiveStore } from '@renderer/store/map-archive.store';
 import { useMessagesStore } from '@renderer/store/messages.store';
+import { useRuntimeStore } from '@renderer/store/runtime.store';
 import { useSettingsStore } from '@renderer/store/settings.store';
 
 type HydratedTransport = Pick<
@@ -89,6 +91,23 @@ function normalizeError(error: unknown): string {
   return 'Unknown MeshCore error';
 }
 
+function describeMessageFeed(message: MeshcoreMessage): { title: string; detail: string } {
+  const target =
+    typeof message.channelIndex === 'number'
+      ? `Channel ${message.channelIndex}`
+      : 'Direct message';
+  const hopSummary =
+    typeof message.hopCount === 'number'
+      ? ` • ${message.hopCount} ${message.hopCount === 1 ? 'hop' : 'hops'}`
+      : '';
+  const bodySummary = message.body.length > 120 ? `${message.body.slice(0, 117)}...` : message.body;
+
+  return {
+    title: `${target} packet`,
+    detail: `${message.authorLabel}: ${bodySummary}${hopSummary}`
+  };
+}
+
 export function useMeshcoreEvents() {
   const activeTransportRef = useRef<ConnectionTransport | null>(null);
   const autoConnectAttemptRef = useRef<{ signature: string; attemptedAt: number } | null>(null);
@@ -145,10 +164,23 @@ export function useMeshcoreEvents() {
     useConnectionStore.getState().setTransport(transport);
   }
 
+  function addFeedMessage(message: MeshcoreMessage, transport: ConnectionTransport | null, tone: 'neutral' | 'success' = 'neutral'): void {
+    const description = describeMessageFeed(message);
+    useRuntimeStore.getState().addFeedEntry({
+      kind: 'message',
+      title: description.title,
+      detail: description.detail,
+      tone,
+      transport,
+      at: message.sentAt
+    });
+  }
+
   function handlePushEvent(event: MeshcorePushEvent, source: ConnectionTransport): void {
     switch (event.type) {
       case 'message':
         useMessagesStore.getState().appendMessage(event.message);
+        addFeedMessage(event.message, source);
         if (archiveNodeKeyRef.current) {
           void saveArchivedMessages(archiveNodeKeyRef.current, [event.message]);
         }
@@ -159,6 +191,14 @@ export function useMeshcoreEvents() {
           const archivedContacts = saveArchivedContacts(contactArchiveNodeKeyRef.current, [event.contact]);
           useMapArchiveStore.getState().replaceArchivedContacts(archivedContacts);
         }
+        useRuntimeStore.getState().addFeedEntry({
+          kind: 'advert',
+          title: `Advert from ${event.contact.displayName}`,
+          detail: `${shortHex(event.contact.publicKey)} • last seen ${new Date(event.contact.lastSeenAt).toLocaleTimeString()}`,
+          tone: 'neutral',
+          transport: source,
+          at: event.contact.lastSeenAt
+        });
         return;
       case 'send-confirmed': {
         const matched = useMessagesStore.getState().acknowledgeMessage(event.ackCrc);
@@ -168,6 +208,13 @@ export function useMeshcoreEvents() {
             useMessagesStore.getState().acknowledgeMessageById(pendingId);
           }
         }
+        useRuntimeStore.getState().addFeedEntry({
+          kind: 'ack',
+          title: 'Transmission confirmed',
+          detail: `Ack CRC ${event.ackCrc} was confirmed by the mesh.`,
+          tone: 'success',
+          transport: source
+        });
         return;
       }
       case 'battery':
@@ -177,6 +224,14 @@ export function useMeshcoreEvents() {
         useConnectionStore.getState().setStatus(event.status);
         if (event.error) {
           useConnectionStore.getState().setError(event.error);
+        }
+        const diagnostics = useRuntimeStore.getState().diagnostics;
+        if (diagnostics.lastConnectionStatus !== event.status || event.error) {
+          useRuntimeStore.getState().recordConnection({
+            status: event.status,
+            transport: source,
+            error: event.error
+          });
         }
 
         if (event.status === 'disconnected' && activeTransportRef.current === source) {
@@ -237,6 +292,7 @@ export function useMeshcoreEvents() {
 
   async function hydrateTransport(transport: ConnectionTransport, client: HydratedTransport): Promise<void> {
     useConnectionStore.getState().setStatus('syncing');
+    useRuntimeStore.getState().recordConnection({ status: 'syncing', transport });
 
     // syncTime must be first per companion protocol requirements
     try {
@@ -262,12 +318,24 @@ export function useMeshcoreEvents() {
 
     archiveNodeKeyRef.current = archiveNodeKey;
     contactArchiveNodeKeyRef.current = contactArchiveNodeKey;
+    useRuntimeStore.getState().beginSession(archiveNodeKey);
     if (waitingMessages.length > 0) {
       await saveArchivedMessages(archiveNodeKey, waitingMessages);
     }
 
     // Set node key before replaceMessages so unread counts are computed against persisted read timestamps
     useMessagesStore.getState().setActiveNodeKey(archiveNodeKey);
+    useRuntimeStore.getState().recordSync({
+      source: 'initial',
+      syncedMessageCount: waitingMessages.length,
+      archivedMessagesAvailable: hydratedMessages.length,
+      contactsLoaded: contacts.length,
+      channelsLoaded: channels.length,
+      transport
+    });
+    for (const message of waitingMessages) {
+      addFeedMessage(message, transport, 'success');
+    }
 
     startTransition(() => {
       useContactsStore.getState().replaceContacts(contacts);
@@ -282,6 +350,7 @@ export function useMeshcoreEvents() {
     useConnectionStore.getState().setBattery(batteryMillivolts);
     useConnectionStore.getState().setError(null);
     useConnectionStore.getState().setStatus('connected');
+    useRuntimeStore.getState().recordConnection({ status: 'connected', transport });
   }
 
   async function syncWaitingMessages(options?: { silent?: boolean }): Promise<void> {
@@ -293,12 +362,22 @@ export function useMeshcoreEvents() {
 
     try {
       const waitingMessages = await window.meshcoreAPI.getWaitingMessages();
+      const diagnostics = useRuntimeStore.getState().diagnostics;
       if (waitingMessages.length > 0) {
         useMessagesStore.getState().appendMessages(waitingMessages);
         if (archiveNodeKeyRef.current) {
           await saveArchivedMessages(archiveNodeKeyRef.current, waitingMessages);
         }
+        for (const message of waitingMessages) {
+          addFeedMessage(message, 'usb', 'success');
+        }
       }
+      useRuntimeStore.getState().recordSync({
+        source: 'poll',
+        syncedMessageCount: waitingMessages.length,
+        archivedMessagesAvailable: diagnostics.archivedMessagesAvailable + waitingMessages.length,
+        transport: 'usb'
+      });
     } catch (error) {
       if (!options?.silent) {
         useConnectionStore.getState().setError(normalizeError(error));
@@ -312,6 +391,7 @@ export function useMeshcoreEvents() {
     try {
       const ports = await window.meshcoreAPI.listPorts();
       useConnectionStore.getState().setPorts(ports);
+      useRuntimeStore.getState().setPortSnapshot(ports.length);
 
       const connectionState = useConnectionStore.getState();
       const selectedPort = connectionState.portPath;
@@ -365,9 +445,20 @@ export function useMeshcoreEvents() {
     for (const port of candidates) {
       try {
         await connect(port.path, { suppressError: true });
+        useRuntimeStore.getState().recordProbe({
+          portPath: port.path,
+          outcome: 'success',
+          transport: 'usb'
+        });
         return;
       } catch (error) {
         lastError = formatSerialConnectionError(error, port.path);
+        useRuntimeStore.getState().recordProbe({
+          portPath: port.path,
+          outcome: 'failed',
+          error: lastError,
+          transport: 'usb'
+        });
       }
     }
 
@@ -396,6 +487,7 @@ export function useMeshcoreEvents() {
     useConnectionStore.getState().setError(null);
     useConnectionStore.getState().setTransport('usb');
     useConnectionStore.getState().setPortPath(trimmedPortPath);
+    useRuntimeStore.getState().recordConnection({ status: 'connecting', transport: 'usb' });
 
     try {
       if (activeTransportRef.current === 'bluetooth') {
@@ -409,7 +501,9 @@ export function useMeshcoreEvents() {
       useConnectionStore.getState().setTransport(null);
       if (!options?.suppressError) {
         useConnectionStore.getState().setStatus('error');
-        useConnectionStore.getState().setError(formatSerialConnectionError(error, trimmedPortPath));
+        const formattedError = formatSerialConnectionError(error, trimmedPortPath);
+        useConnectionStore.getState().setError(formattedError);
+        useRuntimeStore.getState().recordConnection({ status: 'error', transport: null, error: formattedError });
       } else {
         useConnectionStore.getState().setStatus('disconnected');
       }
@@ -429,6 +523,7 @@ export function useMeshcoreEvents() {
     useConnectionStore.getState().setError(null);
     useConnectionStore.getState().setTransport('bluetooth');
     useConnectionStore.getState().setPortPath(null);
+    useRuntimeStore.getState().recordConnection({ status: 'connecting', transport: 'bluetooth' });
 
     try {
       if (activeTransportRef.current === 'usb') {
@@ -441,7 +536,9 @@ export function useMeshcoreEvents() {
       setActiveTransport(null);
       useConnectionStore.getState().setTransport(null);
       useConnectionStore.getState().setStatus('error');
-      useConnectionStore.getState().setError(formatBluetoothConnectionError(error));
+      const formattedError = formatBluetoothConnectionError(error);
+      useConnectionStore.getState().setError(formattedError);
+      useRuntimeStore.getState().recordConnection({ status: 'error', transport: null, error: formattedError });
       throw error;
     } finally {
       connectInFlightRef.current = false;
@@ -459,6 +556,7 @@ export function useMeshcoreEvents() {
     setActiveTransport(null);
     useConnectionStore.getState().setStatus('disconnected');
     autoConnectAttemptRef.current = null;
+    useRuntimeStore.getState().recordConnection({ status: 'disconnected', transport: null });
   }
 
   async function sendDirectMessage(input: SendDirectMessageInput): Promise<void> {

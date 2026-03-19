@@ -20,7 +20,31 @@
     },
     "files": [
       "out/**/*",
-      "package.json"
+      "package.json",
+      "!**/*.map",
+      "!**/*.d.ts",
+      "!**/README",
+      "!**/README.*",
+      "!**/readme.*",
+      "!**/CHANGELOG",
+      "!**/CHANGELOG.*",
+      "!**/changelog.*",
+      "!**/docs/**",
+      "!**/doc/**",
+      "!**/test/**",
+      "!**/tests/**",
+      "!**/__tests__/**",
+      "!**/example/**",
+      "!**/examples/**",
+      "!**/coverage/**",
+      "!**/benchmark/**",
+      "!**/benchmarks/**",
+      "!**/date-fns/**/cdn*",
+      "!**/leaflet/dist/leaflet-src*",
+      "!**/react-dom/cjs/*development.js",
+      "!**/react-dom/cjs/*profiling*.js",
+      "!**/react-dom/cjs/react-dom-server*.js",
+      "!**/react-dom/cjs/react-dom.react-server*.js"
     ],
     "linux": {
       "target": [

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hash, Map, MessageSquare, Settings2 } from 'lucide-react';
+import { Activity, Hash, Map, MessageSquare, Settings2 } from 'lucide-react';
 import { APP_VERSION } from '@shared/app-meta';
 import { useMeshcoreEvents } from '@renderer/hooks/useMeshcoreEvents';
 import { useChannelsStore } from '@renderer/store/channels.store';
@@ -11,12 +11,14 @@ import { useSettingsStore } from '@renderer/store/settings.store';
 import { MapView } from '@renderer/views/MapView';
 import { MessagesView } from '@renderer/views/MessagesView';
 import { SettingsView } from '@renderer/views/SettingsView';
+import { LiveFeedView } from '@renderer/views/LiveFeedView';
 
-type ViewName = 'dms' | 'channels' | 'map' | 'settings';
+type ViewName = 'dms' | 'channels' | 'live' | 'map' | 'settings';
 
 const NAV_ITEMS = [
   { key: 'dms' as const, label: 'Messages', icon: MessageSquare },
   { key: 'channels' as const, label: 'Channels', icon: Hash },
+  { key: 'live' as const, label: 'Live', icon: Activity },
   { key: 'map' as const, label: 'Map', icon: Map },
   { key: 'settings' as const, label: 'Settings', icon: Settings2 },
 ];
@@ -142,6 +144,7 @@ export default function App() {
               onSendChannelMessage={(channelIndex, body) => sendChannelMessage({ channelIndex, body })}
             />
           ) : null}
+          {view === 'live' ? <LiveFeedView /> : null}
           {view === 'map' ? <MapView contacts={contacts} archivedContacts={archivedMapContacts} /> : null}
           {view === 'settings' ? (
             <SettingsView

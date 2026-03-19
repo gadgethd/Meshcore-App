@@ -7,6 +7,7 @@ import { contactCoordinates, hasGpsFix } from '@shared/meshcore';
 
 interface NetworkMapProps {
   contacts: MapContactEntry[];
+  focusedContactHex?: string | null;
 }
 
 interface MapContactEntry {
@@ -54,6 +55,31 @@ function MapViewportSync({ contacts }: { contacts: LocatedContact[] }) {
   return null;
 }
 
+function MapFocusSync({
+  contacts,
+  focusedContactHex
+}: {
+  contacts: LocatedContact[];
+  focusedContactHex: string | null;
+}) {
+  const map = useMap();
+  const focusedContact = focusedContactHex
+    ? contacts.find(({ contact }) => contact.shortHex === focusedContactHex)
+    : null;
+
+  useEffect(() => {
+    if (!focusedContact) {
+      return;
+    }
+
+    map.setView(focusedContact.position, Math.max(map.getZoom(), 14), {
+      animate: true
+    });
+  }, [focusedContact, map]);
+
+  return null;
+}
+
 function ZoomResponsiveMarker({ contact, position, stale }: LocatedContact) {
   const map = useMap();
   const [zoom, setZoom] = useState(() => map.getZoom());
@@ -91,7 +117,7 @@ function ZoomResponsiveMarker({ contact, position, stale }: LocatedContact) {
   );
 }
 
-export function NetworkMap({ contacts }: NetworkMapProps) {
+export function NetworkMap({ contacts, focusedContactHex = null }: NetworkMapProps) {
   const fixedContacts = contacts
     .filter(({ contact }) => hasGpsFix(contact))
     .map(({ contact, stale }) => {
@@ -113,6 +139,7 @@ export function NetworkMap({ contacts }: NetworkMapProps) {
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         <MapViewportSync contacts={fixedContacts} />
+        <MapFocusSync contacts={fixedContacts} focusedContactHex={focusedContactHex} />
         {fixedContacts.map(({ contact, position, stale }) => (
           <ZoomResponsiveMarker key={contact.shortHex} contact={contact} position={position} stale={stale} />
         ))}
