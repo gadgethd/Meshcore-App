@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import type { ConnectionTransport, MeshcoreDeviceInfo, MeshcoreDeviceSettings, UpdateMeshcoreDeviceSettingsInput } from '@shared/meshcore';
+import type {
+  AppUpdateState,
+  ConnectionTransport,
+  MeshcoreDeviceInfo,
+  MeshcoreDeviceSettings,
+  UpdateMeshcoreDeviceSettingsInput
+} from '@shared/meshcore';
 import { APP_VERSION } from '@shared/app-meta';
 import { toHex } from '@shared/meshcore';
 import { useRuntimeStore } from '@renderer/store/runtime.store';
@@ -65,6 +71,22 @@ function formatRelative(value: string | null): string {
   return formatDistanceToNow(new Date(value), { addSuffix: true });
 }
 
+function formatBytes(value: number | null): string {
+  if (!value || value <= 0) {
+    return '—';
+  }
+
+  if (value >= 1024 * 1024) {
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  if (value >= 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+
+  return `${value} B`;
+}
+
 export function SettingsView({
   nodeName,
   status,
@@ -93,6 +115,8 @@ export function SettingsView({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [connectingBluetooth, setConnectingBluetooth] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<MeshcoreDeviceInfo | null>(null);
+  const [appUpdate, setAppUpdate] = useState<AppUpdateState | null>(null);
+  const [updateAction, setUpdateAction] = useState<'idle' | 'checking' | 'downloading' | 'installing'>('idle');
   const diagnostics = useRuntimeStore((state) => state.diagnostics);
   const [rebootConfirm, setRebootConfirm] = useState(false);
   const [rebooting, setRebooting] = useState(false);
@@ -121,6 +145,28 @@ export function SettingsView({
       .then(setDeviceInfo)
       .catch(() => {});
   }, [deviceSettings]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void window.meshcoreAPI.getAppUpdateState().then((state) => {
+      if (!cancelled) {
+        setAppUpdate(state);
+      }
+    });
+
+    const unsubscribe = window.meshcoreAPI.onAppUpdate((state) => {
+      setAppUpdate(state);
+      if (state.status !== 'checking' && state.status !== 'downloading') {
+        setUpdateAction('idle');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -189,6 +235,31 @@ export function SettingsView({
     }
   }
 
+  async function handleCheckForUpdates(): Promise<void> {
+    setUpdateAction('checking');
+    try {
+      const state = await window.meshcoreAPI.checkForAppUpdates();
+      setAppUpdate(state);
+    } finally {
+      setUpdateAction('idle');
+    }
+  }
+
+  async function handleDownloadUpdate(): Promise<void> {
+    setUpdateAction('downloading');
+    try {
+      const state = await window.meshcoreAPI.downloadAppUpdate();
+      setAppUpdate(state);
+    } finally {
+      setUpdateAction('idle');
+    }
+  }
+
+  async function handleInstallUpdate(): Promise<void> {
+    setUpdateAction('installing');
+    await window.meshcoreAPI.installAppUpdate();
+  }
+
   return (
     <div className="grid h-full gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
       <form className="mesh-panel overflow-y-auto px-5 py-5" onSubmit={(event) => void handleSubmit(event)}>
@@ -197,6 +268,76 @@ export function SettingsView({
           <p className="mt-0.5 text-sm text-white/40">Configure the desktop app and connected companion radio.</p>
         </div>
         <div className="mt-5 space-y-4">
+          <div className="rounded-3xl border border-white/10 bg-white/5 px-5 py-4">
+            <p className="text-sm font-semibold text-white">App updates</p>
+            <p className="mt-1 text-sm text-slate-400">Check GitHub Releases, download a new build in-app, and restart when it is ready to install.</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+              <div className="space-y-2 text-sm">
+                <div>
+                  <p className="text-slate-400">Current version</p>
+                  <p className="mt-1 font-semibold text-white">{appUpdate?.currentVersion ?? APP_VERSION}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Update status</p>
+                  <p className="mt-1 font-semibold capitalize text-white">{appUpdate?.status ?? 'idle'}</p>
+                </div>
+                {appUpdate?.availableVersion ? (
+                  <div>
+                    <p className="text-slate-400">Available version</p>
+                    <p className="mt-1 font-semibold text-white">{appUpdate.availableVersion}</p>
+                  </div>
+                ) : null}
+                {appUpdate?.message ? (
+                  <p className="rounded-2xl border border-white/10 bg-black/10 px-3 py-2 text-sm text-slate-300">{appUpdate.message}</p>
+                ) : null}
+                {appUpdate?.status === 'downloading' ? (
+                  <div className="space-y-2">
+                    <div className="h-2 overflow-hidden rounded-full bg-white/8">
+                      <div
+                        className="h-full rounded-full bg-cyan-300 transition-[width]"
+                        style={{ width: `${Math.max(0, Math.min(100, appUpdate.progressPercent ?? 0))}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      {Math.round(appUpdate.progressPercent ?? 0)}% • {formatBytes(appUpdate.transferredBytes)} / {formatBytes(appUpdate.totalBytes)}
+                    </p>
+                  </div>
+                ) : null}
+                {appUpdate?.releaseNotes ? (
+                  <details className="rounded-2xl border border-white/10 bg-black/10 px-3 py-2 text-sm text-slate-300">
+                    <summary className="cursor-pointer font-medium text-white">Release notes</summary>
+                    <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-slate-300">{appUpdate.releaseNotes}</pre>
+                  </details>
+                ) : null}
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  className="mesh-button-secondary"
+                  disabled={updateAction !== 'idle' || appUpdate?.status === 'downloading'}
+                  onClick={() => void handleCheckForUpdates()}
+                >
+                  {updateAction === 'checking' ? 'Checking…' : 'Check for Updates'}
+                </button>
+                <button
+                  type="button"
+                  className="mesh-button-primary"
+                  disabled={updateAction !== 'idle' || appUpdate?.status !== 'available'}
+                  onClick={() => void handleDownloadUpdate()}
+                >
+                  {updateAction === 'downloading' || appUpdate?.status === 'downloading' ? 'Downloading…' : 'Download Update'}
+                </button>
+                <button
+                  type="button"
+                  className="mesh-button-primary"
+                  disabled={updateAction !== 'idle' || appUpdate?.status !== 'downloaded'}
+                  onClick={() => void handleInstallUpdate()}
+                >
+                  {updateAction === 'installing' ? 'Restarting…' : 'Restart to Install'}
+                </button>
+              </div>
+            </div>
+          </div>
           <div className="rounded-3xl border border-white/10 bg-white/5 px-5 py-4">
             <p className="text-sm font-semibold text-white">Transport</p>
             <p className="mt-1 text-sm text-slate-400">Choose whether the desktop app should prefer USB or Bluetooth in the desktop UI and auto-connect behavior.</p>

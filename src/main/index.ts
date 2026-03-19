@@ -3,11 +3,13 @@ import { app, BrowserWindow, Menu, dialog, shell } from 'electron';
 // Required on Linux for Web Bluetooth GATT operations to work via BlueZ
 app.commandLine.appendSwitch('enable-features', 'WebBluetooth');
 import { join } from 'node:path';
+import { AppUpdateManager } from '@main/app-update-manager';
 import { MeshcoreManager } from '@main/meshcore-manager';
 import { registerIpcHandlers } from '@main/ipc-handlers';
 import { IPC_CHANNELS } from '@shared/meshcore';
 
 const meshcoreManager = new MeshcoreManager();
+const appUpdateManager = new AppUpdateManager();
 let pendingBluetoothSelection:
   | {
       callback: (deviceId: string) => void;
@@ -110,12 +112,20 @@ function createWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
-  registerIpcHandlers(meshcoreManager);
+  registerIpcHandlers(meshcoreManager, appUpdateManager);
 
   meshcoreManager.onPush((event) => {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) {
         window.webContents.send(IPC_CHANNELS.push, event);
+      }
+    }
+  });
+
+  appUpdateManager.onStateChange((state) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send(IPC_CHANNELS.appUpdate, state);
       }
     }
   });

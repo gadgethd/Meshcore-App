@@ -6,6 +6,15 @@ export type ConnectionStatus =
   | 'error';
 
 export type ConnectionTransport = 'usb' | 'bluetooth';
+export type AppUpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+  | 'unsupported';
 
 export const MAX_MESHCORE_MESSAGE_CHARS = 133;
 
@@ -104,6 +113,21 @@ export interface MeshcoreDeviceInfo {
   manufacturerModel: string;
 }
 
+export interface AppUpdateState {
+  status: AppUpdateStatus;
+  currentVersion: string;
+  availableVersion: string | null;
+  downloadedVersion: string | null;
+  releaseName: string | null;
+  releaseNotes: string | null;
+  progressPercent: number | null;
+  bytesPerSecond: number | null;
+  transferredBytes: number | null;
+  totalBytes: number | null;
+  lastCheckedAt: string | null;
+  message: string | null;
+}
+
 export interface MeshcoreAPI {
   listPorts: () => Promise<SerialPortInfo[]>;
   connect: (portPath: string) => Promise<void>;
@@ -112,6 +136,10 @@ export interface MeshcoreAPI {
   getSelfInfo: () => Promise<{ name: string }>;
   getDeviceSettings: () => Promise<MeshcoreDeviceSettings>;
   getDeviceInfo: () => Promise<MeshcoreDeviceInfo>;
+  getAppUpdateState: () => Promise<AppUpdateState>;
+  checkForAppUpdates: () => Promise<AppUpdateState>;
+  downloadAppUpdate: () => Promise<AppUpdateState>;
+  installAppUpdate: () => Promise<void>;
   getContacts: () => Promise<MeshcoreContact[]>;
   getChannels: () => Promise<MeshcoreChannel[]>;
   getWaitingMessages: () => Promise<MeshcoreMessage[]>;
@@ -123,6 +151,7 @@ export interface MeshcoreAPI {
   reboot: () => Promise<void>;
   sendAdvert: (type: 'flood' | 'zero-hop') => Promise<void>;
   onPush: (listener: (event: MeshcorePushEvent) => void) => () => void;
+  onAppUpdate: (listener: (event: AppUpdateState) => void) => () => void;
 }
 
 export const IPC_CHANNELS = {
@@ -133,6 +162,10 @@ export const IPC_CHANNELS = {
   getSelfInfo: 'meshcore:getSelfInfo',
   getDeviceSettings: 'meshcore:getDeviceSettings',
   getDeviceInfo: 'meshcore:getDeviceInfo',
+  getAppUpdateState: 'appUpdate:getState',
+  checkForAppUpdates: 'appUpdate:check',
+  downloadAppUpdate: 'appUpdate:download',
+  installAppUpdate: 'appUpdate:install',
   getContacts: 'meshcore:getContacts',
   getChannels: 'meshcore:getChannels',
   getWaitingMessages: 'meshcore:getWaitingMessages',
@@ -143,7 +176,8 @@ export const IPC_CHANNELS = {
   sendChannelMessage: 'meshcore:sendChannelMessage',
   reboot: 'meshcore:reboot',
   sendAdvert: 'meshcore:sendAdvert',
-  push: 'meshcore:push'
+  push: 'meshcore:push',
+  appUpdate: 'appUpdate:state'
 } as const;
 
 export function toHex(bytes: number[]): string {

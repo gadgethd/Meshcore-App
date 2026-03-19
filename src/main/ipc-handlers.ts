@@ -1,8 +1,9 @@
 import { ipcMain } from 'electron';
+import type { AppUpdateManager } from '@main/app-update-manager';
 import type { MeshcoreManager } from '@main/meshcore-manager';
 import { IPC_CHANNELS } from '@shared/meshcore';
 
-export function registerIpcHandlers(meshcoreManager: MeshcoreManager): void {
+export function registerIpcHandlers(meshcoreManager: MeshcoreManager, appUpdateManager: AppUpdateManager): void {
   ipcMain.handle(IPC_CHANNELS.listPorts, async () => {
     const { listCandidatePorts } = await import('@main/port-scanner');
     return listCandidatePorts();
@@ -13,6 +14,10 @@ export function registerIpcHandlers(meshcoreManager: MeshcoreManager): void {
   ipcMain.handle(IPC_CHANNELS.syncTime, () => meshcoreManager.syncTime());
   ipcMain.handle(IPC_CHANNELS.getSelfInfo, () => meshcoreManager.getSelfInfo());
   ipcMain.handle(IPC_CHANNELS.getDeviceSettings, () => meshcoreManager.getDeviceSettings());
+  ipcMain.handle(IPC_CHANNELS.getAppUpdateState, () => appUpdateManager.getState());
+  ipcMain.handle(IPC_CHANNELS.checkForAppUpdates, () => appUpdateManager.checkForUpdates());
+  ipcMain.handle(IPC_CHANNELS.downloadAppUpdate, () => appUpdateManager.downloadUpdate());
+  ipcMain.handle(IPC_CHANNELS.installAppUpdate, () => appUpdateManager.installUpdate());
   ipcMain.handle(IPC_CHANNELS.getContacts, () => meshcoreManager.getContacts());
   ipcMain.handle(IPC_CHANNELS.getChannels, () => meshcoreManager.getChannels());
   ipcMain.handle(IPC_CHANNELS.getWaitingMessages, () => meshcoreManager.getWaitingMessages());

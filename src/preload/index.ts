@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { MeshcoreAPI, MeshcorePushEvent } from '@shared/meshcore';
+import type { AppUpdateState, MeshcoreAPI, MeshcorePushEvent } from '@shared/meshcore';
 import { IPC_CHANNELS } from '@shared/meshcore';
 
 const api: MeshcoreAPI = {
@@ -9,6 +9,10 @@ const api: MeshcoreAPI = {
   syncTime: () => ipcRenderer.invoke(IPC_CHANNELS.syncTime),
   getSelfInfo: () => ipcRenderer.invoke(IPC_CHANNELS.getSelfInfo),
   getDeviceSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getDeviceSettings),
+  getAppUpdateState: () => ipcRenderer.invoke(IPC_CHANNELS.getAppUpdateState),
+  checkForAppUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.checkForAppUpdates),
+  downloadAppUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.downloadAppUpdate),
+  installAppUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.installAppUpdate),
   getContacts: () => ipcRenderer.invoke(IPC_CHANNELS.getContacts),
   getChannels: () => ipcRenderer.invoke(IPC_CHANNELS.getChannels),
   getWaitingMessages: () => ipcRenderer.invoke(IPC_CHANNELS.getWaitingMessages),
@@ -28,6 +32,16 @@ const api: MeshcoreAPI = {
     ipcRenderer.on(IPC_CHANNELS.push, handler);
     return () => {
       ipcRenderer.off(IPC_CHANNELS.push, handler);
+    };
+  },
+  onAppUpdate: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: AppUpdateState) => {
+      listener(payload);
+    };
+
+    ipcRenderer.on(IPC_CHANNELS.appUpdate, handler);
+    return () => {
+      ipcRenderer.off(IPC_CHANNELS.appUpdate, handler);
     };
   }
 };

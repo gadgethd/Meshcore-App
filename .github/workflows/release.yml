@@ -21,17 +21,14 @@ jobs:
             label: Linux
             artifact_suffix: linux
             builder_args: --linux AppImage
-            artifact_glob: "*.AppImage"
           - os: macos-latest
             label: macOS
             artifact_suffix: macos
-            builder_args: --mac dmg
-            artifact_glob: "*.dmg"
+            builder_args: --mac dmg zip
           - os: windows-latest
             label: Windows
             artifact_suffix: windows
             builder_args: --win nsis
-            artifact_glob: "*.exe"
 
     steps:
       - name: Check out repository
@@ -65,10 +62,18 @@ jobs:
         run: |
           shopt -s nullglob
           mkdir -p release-artifacts
-          files=(release/${{ matrix.artifact_glob }})
+          files=(
+            release/*.AppImage
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.yml
+            release/*.yaml
+            release/*.blockmap
+          )
 
           if [ ${#files[@]} -eq 0 ]; then
-            echo "No packaged files matched release/${{ matrix.artifact_glob }}"
+            echo "No packaged files found in release/"
             exit 1
           fi
 
@@ -99,7 +104,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p final-assets
-          find downloaded-artifacts -type f \( -name '*.AppImage' -o -name '*.dmg' -o -name '*.exe' \) -exec cp {} final-assets/ \;
+          find downloaded-artifacts -type f \( -name '*.AppImage' -o -name '*.dmg' -o -name '*.zip' -o -name '*.exe' -o -name '*.yml' -o -name '*.yaml' -o -name '*.blockmap' \) -exec cp {} final-assets/ \;
           ls -la final-assets
 
       - name: Create or update GitHub release
