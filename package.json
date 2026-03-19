@@ -15,6 +15,7 @@
   "build": {
     "appId": "dev.meshcore.desktop",
     "productName": "MeshCore Desktop",
+    "icon": "icon.png",
     "generateUpdatesFilesForAllChannels": true,
     "directories": {
       "output": "release"
