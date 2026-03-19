@@ -292,6 +292,52 @@ export function MessagesView({
       : mode === 'dm'
         ? 'Choose a direct message.'
         : 'Choose a channel.';
+  const mentionCandidates = useMemo(() => {
+    if (!activeChannel) {
+      return [];
+    }
+
+    return contacts
+      .filter(isDirectMessageContact)
+      .map((contact) => ({
+        key: getDirectConversationKey(contact.publicKey),
+        label: contact.displayName,
+        detail: contact.shortHex
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [activeChannel, contacts]);
+  const suggestedMention = useMemo(() => {
+    if (!activeChannel) {
+      return null;
+    }
+
+    const latestIncoming = [...activeMessages]
+      .reverse()
+      .find((message) => message.direction === 'incoming' && !!message.authorLabel.trim());
+
+    if (!latestIncoming) {
+      return null;
+    }
+
+    const messagePublicKey = latestIncoming.publicKey;
+    const matchingContact = messagePublicKey
+      ? contacts.find((contact) => toHex(contact.publicKey) === toHex(messagePublicKey))
+      : contacts.find((contact) => contact.displayName === latestIncoming.authorLabel);
+
+    if (matchingContact) {
+      return {
+        key: getDirectConversationKey(matchingContact.publicKey),
+        label: matchingContact.displayName,
+        detail: matchingContact.shortHex
+      };
+    }
+
+    return {
+      key: `author:${latestIncoming.authorLabel}`,
+      label: latestIncoming.authorLabel,
+      detail: latestIncoming.publicKey ? toHex(latestIncoming.publicKey).slice(0, 8) : 'Recent sender'
+    };
+  }, [activeChannel, activeMessages, contacts]);
 
   useEffect(() => {
     if (!activeKey) {
@@ -397,6 +443,8 @@ export function MessagesView({
           disabled={!connected || !activeKey}
           label="Outbound payload"
           maxChars={MAX_MESHCORE_MESSAGE_CHARS}
+          mentionCandidates={mentionCandidates}
+          suggestedMention={suggestedMention}
           onSend={handleSend}
         />
       </div>
