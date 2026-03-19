@@ -207,8 +207,40 @@ export function normalizeMentionLabel(label: string): string {
   return label.replace(/\s+/g, ' ').trim();
 }
 
+export function sanitizeMentionLabel(label: string): string {
+  let normalized = normalizeMentionLabel(label);
+
+  if (normalized.startsWith('@[') && normalized.endsWith(']')) {
+    normalized = normalized.slice(2, -1);
+  } else if (normalized.startsWith('@')) {
+    normalized = normalized.slice(1);
+  }
+
+  return normalizeMentionLabel(normalized);
+}
+
 export function formatMentionToken(label: string): string {
-  return `@[${normalizeMentionLabel(label)}]`;
+  return `@[${sanitizeMentionLabel(label)}]`;
+}
+
+export function isChannelFallbackAuthorLabel(label: string): boolean {
+  return /^Channel \d+$/i.test(normalizeMentionLabel(label));
+}
+
+export function extractChannelSenderLabel(body: string): string | null {
+  const trimmed = body.trim();
+  const delimiterIndex = trimmed.indexOf(':');
+
+  if (delimiterIndex <= 0) {
+    return null;
+  }
+
+  const sender = sanitizeMentionLabel(trimmed.slice(0, delimiterIndex));
+  if (!sender || isChannelFallbackAuthorLabel(sender)) {
+    return null;
+  }
+
+  return sender;
 }
 
 export function buildNodeMentionAliases(name: string | null | undefined, publicKey?: number[] | null): string[] {
@@ -229,7 +261,7 @@ export function buildNodeMentionAliases(name: string | null | undefined, publicK
 }
 
 export function messageMentionsAlias(body: string, alias: string): boolean {
-  const normalizedAlias = normalizeMentionLabel(alias);
+  const normalizedAlias = sanitizeMentionLabel(alias);
   if (!normalizedAlias) {
     return false;
   }

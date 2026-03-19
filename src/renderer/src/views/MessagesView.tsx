@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ConversationKey, MeshcoreChannel, MeshcoreContact } from '@shared/meshcore';
 import {
+  extractChannelSenderLabel,
   fromHex,
   getChannelConversationKey,
   getDirectConversationKey,
+  isChannelFallbackAuthorLabel,
   isDirectMessageContact,
   MAX_MESHCORE_MESSAGE_CHARS,
+  sanitizeMentionLabel,
   toHex
 } from '@shared/meshcore';
 import { ConversationList, type ConversationListItem, type ConversationSection } from '@renderer/components/messaging/ConversationList';
@@ -319,10 +322,14 @@ export function MessagesView({
       return null;
     }
 
+    const derivedAuthorLabel = isChannelFallbackAuthorLabel(latestIncoming.authorLabel)
+      ? extractChannelSenderLabel(latestIncoming.body)
+      : sanitizeMentionLabel(latestIncoming.authorLabel);
+
     const messagePublicKey = latestIncoming.publicKey;
     const matchingContact = messagePublicKey
       ? contacts.find((contact) => toHex(contact.publicKey) === toHex(messagePublicKey))
-      : contacts.find((contact) => contact.displayName === latestIncoming.authorLabel);
+      : contacts.find((contact) => sanitizeMentionLabel(contact.displayName) === derivedAuthorLabel);
 
     if (matchingContact) {
       return {
@@ -332,9 +339,13 @@ export function MessagesView({
       };
     }
 
+    if (!derivedAuthorLabel) {
+      return null;
+    }
+
     return {
-      key: `author:${latestIncoming.authorLabel}`,
-      label: latestIncoming.authorLabel,
+      key: `author:${derivedAuthorLabel}`,
+      label: derivedAuthorLabel,
       detail: latestIncoming.publicKey ? toHex(latestIncoming.publicKey).slice(0, 8) : 'Recent sender'
     };
   }, [activeChannel, activeMessages, contacts]);
